@@ -91,8 +91,4 @@ A vertical platformer game where the player jumps on platforms to reach higher a
 - More power-ups and collectibles
 - Multiple character options
 - Difficulty settings
-
-## Credits
-
-Original game concept by Richard Dearma
-Enhanced with additional features and documentation. 
+ 
