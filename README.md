@@ -4,6 +4,7 @@ A vertical platformer game where the player jumps on platforms to reach higher a
 Have a score boost by using the Jetpack tht appears occasionally.
 
 ### Find all the prompts, AI generated content in [GamePrompt.docx](https://github.com/prashantzzz/Hop.It/blob/main/GamePrompt.docx) file, and Video walkthrough [Hopit.mp4](https://github.com/prashantzzz/Hop.It/blob/main/Hop.It.mp4) file in the repository.
+![Hop It Gameplay](https://github.com/prashantzzz/Hop.It/blob/main/Hop.It.gif?raw=true)
 
 ## Requirements
 
