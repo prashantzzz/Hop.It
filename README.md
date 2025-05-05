@@ -1,7 +1,8 @@
 # Hop.It Game
 Fully AI generated using prompt engineering in Cursor.
 A vertical platformer game where the player jumps on platforms to reach higher and achieve a better score. Test your reflexes and timing as you navigate increasingly difficult platforms!
-Find all the prompts, AI generated content and walkthrough in the GamePrompt.docx file.
+
+## Find all the prompts, AI generated content in GamePrompt.docx file, and Video walkthrough .mp4 file in the repository.
 
 ## Requirements
 
