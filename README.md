@@ -9,6 +9,12 @@ A vertical platformer game where the player jumps on platforms to reach higher a
 - Python 3.x
 - Pygame library (`pip install pygame`)
 
+## Using exe to run it (simplest)
+
+1. Download the dist.zip fle from release
+2. Unzip it then go to dist/main/main.exe
+3. Run the .exe file
+
 ## Installation
 
 1. Clone or download this repository.
