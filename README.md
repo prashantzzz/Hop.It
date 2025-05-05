@@ -9,13 +9,15 @@ A vertical platformer game where the player jumps on platforms to reach higher a
 - Python 3.x
 - Pygame library (`pip install pygame`)
 
-## Using exe to run it (simplest)
+## [Try it here](https://prashantzz.itch.io/hopit)
+
+## Using exe to run it as GUI
 
 1. Download the dist.zip fle from release
 2. Unzip it then go to dist/main/main.exe
 3. Run the .exe file
 
-## Installation
+## Cloning
 
 1. Clone or download this repository.
 
@@ -79,7 +81,7 @@ A vertical platformer game where the player jumps on platforms to reach higher a
 - Game runs at 60 FPS for smooth gameplay
 - Includes collision detection and basic physics
 - Scrolling camera that follows the player's ascent
-- All assets must be present in the `assets` folder:
+- For cloning: All assets must be present in the `assets` folder:
   - `jump1.png`, `jump2.png`, `jump3.png`, `jet.png`, `jet-char.png`, `platform.png`, `bg.png`, `over.png`
   - `jump.wav`, `level-up.mp3`, `over.mp3`, `bg-music.mp3`
 
