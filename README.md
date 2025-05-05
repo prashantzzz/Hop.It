@@ -14,7 +14,7 @@ A vertical platformer game where the player jumps on platforms to reach higher a
 
 ### Using exe to run it as GUI (Best & simple way)
 
-1. Download the dist.zip fle from release
+1. Download the dist.zip fle from [release](https://github.com/prashantzzz/Hop.It/releases/tag/Hop.It)
 2. Unzip it then go to dist/main/main.exe
 3. Run the .exe file
 
