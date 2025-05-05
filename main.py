@@ -59,6 +59,7 @@ player_height = 0
 level_up_played = False  # Flag to track if level up sound has been played
 show_instructions = True  # Flag to show instructions at start
 instruction_timer = 0  # Timer for how long to show instructions
+new_high_score = False  # Flag to track if a new high score was achieved
 
 #define colours
 BRIGHT_COLOR = (255, 255, 255)
@@ -85,6 +86,7 @@ else:
 font_small = pygame.font.SysFont('Lucida Sans', 20)
 font_big = pygame.font.SysFont('Lucida Sans', 24, bold=True)
 font_instruction = pygame.font.SysFont('Lucida Sans', 18, bold=True)  # Smaller font for instructions
+font_game_over = pygame.font.SysFont('Lucida Sans', 36, bold=True)  # Larger font for Game Over text
 
 # Load sounds
 
@@ -235,13 +237,13 @@ class Hero():
 			horizontal_move = -10
 			self.facing_left = True
 		elif self.move_left:  # Use elif to prevent keyboard and button input conflicts
-			horizontal_move = -3  # Further reduced sensitivity for button input
+			horizontal_move = -8  # Matched with keyboard input for better responsiveness
 			self.facing_left = True
 		if keys[pygame.K_RIGHT]:
 			horizontal_move = 10
 			self.facing_left = False
 		elif self.move_right:  # Use elif to prevent keyboard and button input conflicts
-			horizontal_move = 3  # Further reduced sensitivity for button input
+			horizontal_move = 8  # Matched with keyboard input for better responsiveness
 			self.facing_left = False
 		
 		#reset movement flags
@@ -345,10 +347,19 @@ class Floor(pygame.sprite.Sprite):
 		#handle horizontal movement for moving floors
 		if self.is_moving == True:
 			self.movement_timer += 1
-			self.rect.x += self.move_direction * self.move_speed
+			
+			# Calculate the next position
+			next_x = self.rect.x + (self.move_direction * (self.move_speed * 0.5))
+			
+			# Check if the next position would be outside the screen boundaries
+			if next_x < 0 or next_x + self.rect.width > SCREEN_WIDTH:
+				self.move_direction *= -1  # Reverse direction
+				self.movement_timer = 0
+			else:
+				self.rect.x = next_x  # Only move if within boundaries
 
-		#change direction at screen edges or after timer expires
-		if self.movement_timer >= 100 or self.rect.left < 0 or self.rect.right > SCREEN_WIDTH:
+		#change direction after timer expires
+		if self.movement_timer >= 100:
 			self.move_direction *= -1
 			self.movement_timer = 0
 
@@ -474,6 +485,7 @@ while run:
 			end_state = True
 			#update best height only at game over
 			if player_height > best_height:
+				new_high_score = True  # Set flag for new high score
 				best_height = player_height
 				try:
 					# Get the appropriate directory to save the score file
@@ -498,16 +510,33 @@ while run:
 		# Draw game over background
 		screen.blit(game_over_image, (0, 0))
 		
-		draw_text('Game Over!', font_big, BRIGHT_COLOR, 130, 200)
-		draw_text('Height:  ' + str(player_height), font_big, BRIGHT_COLOR, 130, 250)
-		draw_text('Press space to play again', font_big, BRIGHT_COLOR, 40, 300)
+		# Center-align all text
+		game_over_text = 'Game Over!'
+		text_width = font_game_over.size(game_over_text)[0]
+		draw_text(game_over_text, font_game_over, BRIGHT_COLOR, (SCREEN_WIDTH - text_width) // 2, 180)  # Moved up slightly to accommodate larger font
+		
+		height_text = 'Height:  ' + str(player_height)
+		text_width = font_big.size(height_text)[0]
+		draw_text(height_text, font_big, BRIGHT_COLOR, (SCREEN_WIDTH - text_width) // 2, 250)
+		
+		# Show 'New High Score' message if player achieved a new high score
+		if new_high_score:
+			high_score_text = 'New High Score!'
+			text_width = font_big.size(high_score_text)[0]
+			draw_text(high_score_text, font_big, (255, 255, 0), (SCREEN_WIDTH - text_width) // 2, 275)  # Yellow color for emphasis
+		
+		retry_text = 'Hit Space or Tap to Retry'
+		text_width = font_big.size(retry_text)[0]
+		draw_text(retry_text, font_big, BRIGHT_COLOR, (SCREEN_WIDTH - text_width) // 2, 300)
 		key = pygame.key.get_pressed()
-		if key[pygame.K_SPACE]:
+		# Check for space key or mouse click to restart
+		if key[pygame.K_SPACE] or pygame.mouse.get_pressed()[0]:
 			#reset variables
 			end_state = False
 			player_height = 0
 			camera_shift = 0
 			level_up_played = False
+			new_high_score = False  # Reset high score flag
 			show_instructions = True  # Show instructions again on restart
 			instruction_timer = 0
 			#reposition hero
