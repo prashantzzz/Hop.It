@@ -880,8 +880,8 @@ while run:
 			floor = Floor(floor_x, floor_y, floor_width, floor_moves)
 			floor_group.add(floor)
 
-		#generate jets every 350 points
-		if player_height % 500 < 5 and len(jet_group) == 0 and player_height>400:  # Changed from 200 to 350 points
+		#generate jets every 400 points
+		if player_height % 400 < 4 and len(jet_group) == 0 and player_height>400:  # Changed from 200 to 350 points
 			jet_x = random.randint(50, SCREEN_WIDTH - 50)
 			jet_y = floor.rect.y - random.randint(40, 60)  # Place between platforms
 			jet = Jet(jet_x, jet_y)
