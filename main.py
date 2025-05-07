@@ -3,6 +3,7 @@ import pygame
 import random
 import os
 import sys
+import math
 
 # Helper function to handle resource paths for both development and PyInstaller
 def resource_path(relative_path):
@@ -34,8 +35,10 @@ jump3_sprite = pygame.image.load(resource_path('assets/jump3.png')).convert_alph
 jet_sprite = pygame.image.load(resource_path('assets/jet.png')).convert_alpha()
 jet_char_sprite = pygame.image.load(resource_path('assets/jet-char.png')).convert_alpha()
 background_image = pygame.image.load(resource_path('assets/bg.png')).convert_alpha()
+base_image = pygame.image.load(resource_path('assets/base.png')).convert_alpha() 
+clouds_image = pygame.image.load(resource_path('assets/clouds.png')).convert_alpha()
 floor_sprite = pygame.image.load(resource_path('assets/platform.png')).convert_alpha()
-game_over_image = pygame.image.load(resource_path('assets/over.png')).convert_alpha()
+game_over_bg_image = pygame.image.load(resource_path('assets/over.png')).convert_alpha()
 game_logo_image = pygame.image.load(resource_path('assets/hop.it.png')).convert_alpha()
 
 #load button images
@@ -45,8 +48,14 @@ right_btn_image = pygame.image.load(resource_path('assets/right-btn.png')).conve
 # Load button images for home screen
 start_btn_image = pygame.image.load(resource_path('assets/Start.png')).convert_alpha()
 music_btn_image = pygame.image.load(resource_path('assets/Music.png')).convert_alpha()
+music_off_btn_image = pygame.image.load(resource_path('assets/Musicoff.png')).convert_alpha()
 sfx_btn_image = pygame.image.load(resource_path('assets/SFX.png')).convert_alpha()
+sfx_off_btn_image = pygame.image.load(resource_path('assets/SFXoff.png')).convert_alpha()
 theme_btn_image = pygame.image.load(resource_path('assets/Theme.png')).convert_alpha()
+
+# Load game over screen button images
+retry_btn_image = pygame.image.load(resource_path('assets/retry.png')).convert_alpha()
+main_menu_btn_image = pygame.image.load(resource_path('assets/main-menu.png')).convert_alpha()
 
 #set window icon
 # pygame.display.set_icon(jump1_sprite)
@@ -57,10 +66,14 @@ FPS = 60
 
 #game variables
 CAMERA_BOUNDARY = 200
-FALL_SPEED = 0.7  # Reduced from 1 to 0.7 for slower falling
+FALL_SPEED = 0.7  # For falling speed
 MAX_FLOORS = 10
 camera_shift = 0
 background_offset = 0
+clouds_offset = 0
+
+# Background colors
+SKY_BLUE = (135, 206, 235)  # Sky blue color for the base background
 end_state = False
 player_height = 0
 level_up_played = False  # Flag to track if level up sound has been played
@@ -74,13 +87,36 @@ GAME_STATE_PLAYING = 1
 GAME_STATE_OVER = 2
 current_game_state = GAME_STATE_HOME
 
+# Animation settings for home screen
+home_animation_active = True
+logo_y_pos = -200  # Start off-screen
+logo_target_y = 50
+start_btn_scale = 0.0  # Start with zero scale (invisible)
+start_btn_target_scale = 0.8  # Target scale for the button
+start_btn_y_pos = SCREEN_HEIGHT//2  # Fixed Y position
+music_btn_y_pos = SCREEN_HEIGHT + 100  # Start below screen
+sfx_btn_y_pos = SCREEN_HEIGHT + 100
+theme_btn_y_pos = SCREEN_HEIGHT + 100
+buttons_target_y = SCREEN_HEIGHT * 3//4
+animation_speed = 10
+animation_delay = [0, 15, 30, 45, 60]  # Delays for each element [logo, start, music, sfx, theme]
+animation_timer = 0
+
+# Start button pop animation phases
+START_BTN_PHASE_HIDDEN = 0
+START_BTN_PHASE_POPPING = 1
+START_BTN_PHASE_OVERSHOOT = 2
+START_BTN_PHASE_SETTLE = 3
+START_BTN_PHASE_DONE = 4
+start_btn_phase = START_BTN_PHASE_HIDDEN
+
 # Theme settings
 theme_index = 0
 theme_colors = [
-    {'name': 'Default', 'bg': (6, 56, 107), 'text': (255, 255, 255)},
-    {'name': 'Dark', 'bg': (30, 30, 30), 'text': (220, 220, 220)},
-    {'name': 'Neon', 'bg': (0, 0, 0), 'text': (0, 255, 0)},
-    {'name': 'Pastel', 'bg': (255, 230, 230), 'text': (70, 70, 100)}
+    {'name': 'Orange', 'bg': (6, 56, 107), 'text': (255, 165, 0)},  # Orange (default)
+    {'name': 'Light Blue', 'bg': (6, 56, 107), 'text': (135, 206, 250)},  # Light Blue
+    {'name': 'Mustard', 'bg': (6, 56, 107), 'text': (225, 173, 1)},  # Mustard
+    {'name': 'Beige', 'bg': (6, 56, 107), 'text': (255, 253, 208)}  # Beige
 ]
 
 # Sound settings
@@ -91,6 +127,7 @@ sfx_on = True
 BRIGHT_COLOR = theme_colors[theme_index]['text']
 DARK_COLOR = (0, 0, 0)
 UI_COLOR = theme_colors[theme_index]['bg']
+GAME_OVER_BG_COLOR = (161, 239, 243)  # RGB value for hex a1eff3
 
 # Create fade surface for game over screen
 # fade_surface = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
@@ -112,7 +149,7 @@ else:
 font_small = pygame.font.SysFont('Lucida Sans', 20)
 font_big = pygame.font.SysFont('Lucida Sans', 24, bold=True)
 font_instruction = pygame.font.SysFont('Lucida Sans', 18, bold=True)  # Smaller font for instructions
-font_game_over = pygame.font.SysFont('Lucida Sans', 36, bold=True)  # Larger font for Game Over text
+font_game_over = pygame.font.SysFont('Lucida Sans', 42, bold=True)  # Larger font for Game Over text
 font_status = pygame.font.SysFont('Lucida Sans', 16, bold=True)  # Small bold font for button status indicators
 
 # Load sounds
@@ -139,48 +176,142 @@ try:
 except Exception as e:
 	print(f"Background music file not found: {e}. Game will run without music.")
 
-#function for outputting text onto the screen
-def draw_text(text, font, text_col, x, y):
-	img = font.render(text, True, text_col)
-	screen.blit(img, (x, y))
+#function for outputting text onto the screen with outline
+def draw_text(text, font, text_col, x, y, outline_col=(0, 0, 0), use_outline=True):
+	if not use_outline:
+		# Original simple text rendering without outline
+		img = font.render(text, True, text_col)
+		screen.blit(img, (x, y))
+	else:
+		# Create text surface for positioning
+		text_surface = font.render(text, True, text_col)
+		text_rect = text_surface.get_rect(topleft=(x, y))
+		
+		# Define outline thickness
+		outline_thickness = 1  # Reduced to prevent distortion
+		
+		# Define offset positions for the outline
+		offsets = [(-outline_thickness, -outline_thickness),
+				   (-outline_thickness, 0),
+				   (-outline_thickness, outline_thickness),
+				   (0, -outline_thickness),
+				   (0, outline_thickness),
+				   (outline_thickness, -outline_thickness),
+				   (outline_thickness, 0),
+				   (outline_thickness, outline_thickness)]
+		
+		# Draw the outline by rendering the text in the outline color at each offset
+		for dx, dy in offsets:
+			outline_surface = font.render(text, True, outline_col)
+			screen.blit(outline_surface, (text_rect.x + dx, text_rect.y + dy))
+		
+		# Finally, draw the main text on top
+		screen.blit(text_surface, text_rect)
 
 #button class
 class Button():
-	def __init__(self, x, y, image, scale=1):
+	def __init__(self, x, y, image, scale, alt_image=None):
 		width = image.get_width()
 		height = image.get_height()
-		self.image = pygame.transform.scale(image, (int(width * scale), int(height * scale)))
+		self.original_image = image
+		self.alt_image = alt_image  # Alternative image for different states (e.g., on/off)
+		self.current_image = image  # Track which image is currently being used
+		self.original_scale = scale
+		self.current_scale = scale
+		
+		# Scale the image to the specified size
+		new_width = int(width * scale)
+		new_height = int(height * scale)
+		self.image = pygame.transform.scale(image, (new_width, new_height))
+		
 		self.rect = self.image.get_rect()
-		self.rect.x = x
-		self.rect.y = y
+		self.rect.topleft = (x, y)
 		self.clicked = False
-		self.held = False
-		self.finger_id = None
+		
+		# Store original dimensions for scaling
+		self.original_width = width
+		self.original_height = height
+		self.center_x = x + (width * scale) // 2
+		self.center_y = y + (height * scale) // 2
+		
+		# Click animation properties
+		self.click_animation = False
+		self.click_scale = scale
+		self.click_timer = 0
+		self.click_duration = 6  # Reduced frames for faster, more responsive animation
+		self.animation_complete = False  # Flag to track when animation is complete
+		self.visible = True  # Control visibility of button
+	
+	def set_image(self, use_alt_image):
+		# Store current center position
+		center_x, center_y = self.rect.centerx, self.rect.centery
+		
+		# Switch between original and alternative image
+		if use_alt_image and self.alt_image:
+			self.current_image = self.alt_image
+		else:
+			self.current_image = self.original_image
+		
+		# Apply current scale to the new image
+		new_width = int(self.original_width * self.current_scale)
+		new_height = int(self.original_height * self.current_scale)
+		self.image = pygame.transform.scale(self.current_image, (new_width, new_height))
+		
+		# Preserve the button's position
+		self.rect = self.image.get_rect()
+		self.rect.centerx = center_x
+		self.rect.centery = center_y
+	
+	def update_scale(self, new_scale):
+		# Update button scale and maintain center position
+		self.current_scale = new_scale
+		new_width = int(self.original_width * new_scale)
+		new_height = int(self.original_height * new_scale)
+		
+		# Use current_image if available, otherwise use original_image
+		if hasattr(self, 'current_image') and self.current_image is not None:
+			self.image = pygame.transform.scale(self.current_image, (new_width, new_height))
+		else:
+			self.image = pygame.transform.scale(self.original_image, (new_width, new_height))
+		
+		# Update rectangle and position to keep button centered
+		self.rect = self.image.get_rect()
+		self.rect.centerx = self.center_x
+		self.rect.centery = self.center_y
 	
 	def draw(self):
-		action = False
-		
-		#get mouse position
-		pos = pygame.mouse.get_pos()
-		
-		#check mouseover and clicked/held conditions
-		if self.rect.collidepoint(pos):
-			# Check for mouse press
-			if pygame.mouse.get_pressed()[0] == 1:
-				if not self.clicked:
-					self.clicked = True
-					action = True
-				self.held = True
-				return action or self.held
-		
-		if pygame.mouse.get_pressed()[0] == 0:
-			self.clicked = False
-			self.held = False
+		# Only draw if visible
+		if not hasattr(self, 'visible') or self.visible:
+			# Handle click animation if active
+			if self.click_animation:
+				self.click_timer += 1
+				
+				# First phase: shrink more dramatically
+				if self.click_timer <= self.click_duration // 2:
+					# Shrink to 70% of original scale for more noticeable effect
+					scale_factor = self.click_scale * (1.0 - 0.3 * (self.click_timer / (self.click_duration // 2)))
+					self.update_scale(scale_factor)
+				# Second phase: expand back with slight bounce
+				elif self.click_timer <= self.click_duration:
+					# Expand back to original scale with slight overshoot
+					progress = (self.click_timer - self.click_duration // 2) / (self.click_duration // 2)
+					scale_factor = self.click_scale * (0.7 + 0.35 * progress)  # Slightly overshoot for bounce effect
+					self.update_scale(scale_factor)
+				else:
+					# Animation complete
+					self.click_animation = False
+					self.animation_complete = True  # Set flag when animation is complete
+					self.update_scale(self.click_scale)
 			
-		#draw button on screen
-		screen.blit(self.image, (self.rect.x, self.rect.y))
-		
-		return action or self.held
+			# Draw button on screen
+			screen.blit(self.image, (self.rect.x, self.rect.y))
+			
+			# Check for mouse press
+			pos = pygame.mouse.get_pos()
+			if self.rect.collidepoint(pos):
+				if pygame.mouse.get_pressed()[0] == 1:
+					return True
+		return False
 	
 	def check_finger_event(self, event):
 		# Handle touch events
@@ -192,6 +323,10 @@ class Button():
 			if self.rect.collidepoint((x, y)):
 				self.finger_id = event.finger_id
 				self.held = True
+				# Start click animation for touch events
+				self.click_animation = True
+				self.click_timer = 0
+				self.click_scale = self.current_scale
 				return True
 				
 		elif event.type == pygame.FINGERMOTION:
@@ -210,10 +345,21 @@ class Button():
 def draw_panel():
 	draw_text(' ' + str(int(player_height)), font_big, BRIGHT_COLOR, 10, 5)
 
-#function for drawing the background
-def draw_bg(background_offset):
-	screen.blit(background_image, (0, 0 + background_offset))
-	screen.blit(background_image, (0, -600 + background_offset))
+#function for drawing the background with parallax effect
+def draw_bg(background_offset, clouds_offset):
+    # Layer 1: Sky blue base background
+    screen.fill(SKY_BLUE)
+    
+    # Layer 2: Base layer - doesn't move
+    screen.blit(base_image, (0, 0))
+    
+    # Layer 3: Clouds with slower parallax movement
+    screen.blit(clouds_image, (0, 0 + clouds_offset))
+    screen.blit(clouds_image, (0, -600 + clouds_offset))
+    
+    # Layer 4: Top background layer with original movement
+    screen.blit(background_image, (0, 0 + background_offset))
+    screen.blit(background_image, (0, -600 + background_offset))
 
 #jet class
 class Jet(pygame.sprite.Sprite):
@@ -336,11 +482,12 @@ class Hero():
 				self.has_jet = True
 				self.vertical_speed = -10  # Reduced boost for smaller jump
 				jet.kill()
-				# Play level up sound when collecting jet
-				try:
-					level_up_effect.play()
-				except:
-					pass
+				# Play level up sound when collecting jet (only if SFX is enabled)
+				if sfx_on and level_up_effect:
+					try:
+						level_up_effect.play()
+					except:
+						pass
 
 		#scroll camera when hero reaches upper section
 		if self.hitbox.top <= CAMERA_BOUNDARY:
@@ -406,7 +553,7 @@ jet_group = pygame.sprite.Group()
 
 #create buttons
 # Position buttons at the bottom with padding of 30px from edges and bottom
-button_scale = 1.5  # Larger buttons while maintaining aspect ratio
+button_scale = 1.0  # Standard size buttons while maintaining aspect ratio
 button_padding = 30
 left_button = Button(button_padding, SCREEN_HEIGHT - button_padding - left_btn_image.get_height() * button_scale, left_btn_image, button_scale)
 right_button = Button(SCREEN_WIDTH - button_padding - right_btn_image.get_width() * button_scale, SCREEN_HEIGHT - button_padding - right_btn_image.get_height() * button_scale, right_btn_image, button_scale)
@@ -435,9 +582,35 @@ total_width = 3 * small_btn_width + 2 * button_spacing
 row_start_x = SCREEN_WIDTH//2 - total_width//2
 row_y = SCREEN_HEIGHT * 3//4  # Moved further down
 
-music_button = Button(row_start_x, row_y, music_btn_image, button_scale)
-sfx_button = Button(row_start_x + small_btn_width + button_spacing, row_y, sfx_btn_image, button_scale)
+music_button = Button(row_start_x, row_y, music_btn_image, button_scale, music_off_btn_image)
+sfx_button = Button(row_start_x + small_btn_width + button_spacing, row_y, sfx_btn_image, button_scale, sfx_off_btn_image)
 theme_button = Button(row_start_x + 2 * (small_btn_width + button_spacing), row_y, theme_btn_image, button_scale)
+
+# Game over screen buttons
+game_over_button_scale = 0.8
+retry_width = retry_btn_image.get_width() * game_over_button_scale
+retry_height = retry_btn_image.get_height() * game_over_button_scale
+main_menu_width = main_menu_btn_image.get_width() * game_over_button_scale
+main_menu_height = main_menu_btn_image.get_height() * game_over_button_scale
+
+# Position buttons vertically with spacing
+game_over_button_spacing = 40  # Increased spacing between buttons
+retry_y_pos = SCREEN_HEIGHT//2 - retry_height//2 + 40  # Position retry button above center
+main_menu_y_pos = SCREEN_HEIGHT//2 + main_menu_height//2 + 55  # Position main menu button below center
+
+retry_button = Button(SCREEN_WIDTH//2 - retry_width//2, retry_y_pos, retry_btn_image, game_over_button_scale)
+main_menu_button = Button(SCREEN_WIDTH//2 - main_menu_width//2, main_menu_y_pos, main_menu_btn_image, game_over_button_scale)
+
+# Game over screen animation variables
+retry_btn_y_pos = SCREEN_HEIGHT + 100  		# Start below screen
+main_menu_btn_y_pos = SCREEN_HEIGHT + 100  # Start below screen
+game_over_animation_active = False
+game_over_animation_timer = 0
+game_over_animation_delay = 30  # Delay before buttons appear
+
+# Initialize button images based on initial states
+music_button.set_image(not music_on)
+sfx_button.set_image(not sfx_on)
 
 #create starting floor
 floor = Floor(SCREEN_WIDTH // 2 - 50, SCREEN_HEIGHT - 50, 100, False)
@@ -458,34 +631,110 @@ while run:
 	if current_game_state == GAME_STATE_HOME:
 		# Auto-scrolling background on home screen
 		background_offset += 0.5  # Slow background movement
+		clouds_offset += 0.2  # Even slower clouds movement for parallax effect
 		if background_offset >= 600:
 			background_offset = 0
-		draw_bg(background_offset)
+		if clouds_offset >= 600:
+			clouds_offset = 0
+		draw_bg(background_offset, clouds_offset)
 
 	if current_game_state == GAME_STATE_HOME:
 		# Draw home screen
-		# Draw the game logo at the top
-		screen.blit(logo_image, (SCREEN_WIDTH // 2 - logo_width // 2, 50))
 		
 		# High score display
 		best_text = f'Best: {best_height}'
 		text_width = font_big.size(best_text)[0]
 		draw_text(best_text, font_big, BRIGHT_COLOR, SCREEN_WIDTH - text_width - 10, 10)
 		
-		# Draw buttons - no text needed as images have text
+		# Handle animations
+		if home_animation_active:
+			animation_timer += 1
+			
+			# Animate logo dropping from top
+			if animation_timer >= animation_delay[0]:
+				if logo_y_pos < logo_target_y:
+					logo_y_pos += animation_speed
+					if logo_y_pos > logo_target_y:
+						logo_y_pos = logo_target_y
+			
+			# Animate start button with pop effect (after logo)
+			if animation_timer >= animation_delay[1]:
+				if start_btn_phase == START_BTN_PHASE_HIDDEN and logo_y_pos == logo_target_y:
+					start_btn_phase = START_BTN_PHASE_POPPING
+				
+				if start_btn_phase == START_BTN_PHASE_POPPING:
+					# Rapidly grow to slightly larger than target
+					start_btn_scale += 0.06
+					if start_btn_scale >= start_btn_target_scale * 1.2:
+						start_btn_scale = start_btn_target_scale * 1.2
+						start_btn_phase = START_BTN_PHASE_OVERSHOOT
+				
+				elif start_btn_phase == START_BTN_PHASE_OVERSHOOT:
+					# Shrink back slightly smaller than target
+					start_btn_scale -= 0.03
+					if start_btn_scale <= start_btn_target_scale * 0.9:
+						start_btn_scale = start_btn_target_scale * 0.9
+						start_btn_phase = START_BTN_PHASE_SETTLE
+				
+				elif start_btn_phase == START_BTN_PHASE_SETTLE:
+					# Settle to final size
+					start_btn_scale += 0.01
+					if start_btn_scale >= start_btn_target_scale:
+						start_btn_scale = start_btn_target_scale
+						start_btn_phase = START_BTN_PHASE_DONE
+			
+			# Animate music button rising from bottom
+			if animation_timer >= animation_delay[2]:
+				if music_btn_y_pos > buttons_target_y:
+					music_btn_y_pos -= animation_speed
+					if music_btn_y_pos < buttons_target_y:
+						music_btn_y_pos = buttons_target_y
+			
+			# Animate sfx button rising from bottom
+			if animation_timer >= animation_delay[3]:
+				if sfx_btn_y_pos > buttons_target_y:
+					sfx_btn_y_pos -= animation_speed
+					if sfx_btn_y_pos < buttons_target_y:
+						sfx_btn_y_pos = buttons_target_y
+			
+			# Animate theme button rising from bottom
+			if animation_timer >= animation_delay[4]:
+				if theme_btn_y_pos > buttons_target_y:
+					theme_btn_y_pos -= animation_speed
+					if theme_btn_y_pos < buttons_target_y:
+						theme_btn_y_pos = buttons_target_y
+			
+			# Check if all animations are complete
+			if (logo_y_pos == logo_target_y and 
+				start_btn_phase == START_BTN_PHASE_DONE and 
+				music_btn_y_pos == buttons_target_y and 
+				sfx_btn_y_pos == buttons_target_y and 
+				theme_btn_y_pos == buttons_target_y):
+				home_animation_active = False
+		
+		# Draw the game logo at its current animated position
+		screen.blit(logo_image, (SCREEN_WIDTH // 2 - logo_width // 2, logo_y_pos))
+		
+		# Update button positions and scales for animation
+		start_button.update_scale(start_btn_scale)  # Apply pop animation scale
+		music_button.rect.y = music_btn_y_pos
+		sfx_button.rect.y = sfx_btn_y_pos
+		theme_button.rect.y = theme_btn_y_pos
+		
+		# Set visibility based on animation state
+		start_button.visible = start_btn_scale > 0.01  # Only visible when scale is significant
+		
+		# Draw buttons at their current animated positions
 		start_button.draw()
-		
-		# Draw status indicators next to buttons
-		music_status = "ON" if music_on else "OFF"
-		sfx_status = "ON" if sfx_on else "OFF"
-		theme_name = theme_colors[theme_index]['name']
-		
-		# Draw the buttons
 		music_button.draw()
 		sfx_button.draw()
 		theme_button.draw()
 		
 		# Draw status indicators below buttons using small bold font
+		music_status = "ON" if music_on else "OFF"
+		sfx_status = "ON" if sfx_on else "OFF"
+		theme_name = theme_colors[theme_index]['name']
+		
 		draw_text(music_status, font_status, BRIGHT_COLOR, 
 			music_button.rect.centerx - font_status.size(music_status)[0]//2, 
 			music_button.rect.bottom + 10)
@@ -498,14 +747,52 @@ while run:
 			theme_button.rect.centerx - font_status.size(theme_name)[0]//2, 
 			theme_button.rect.bottom + 10)
 		
-		# Store button states before checking clicks to avoid double-triggering
-		start_clicked = start_button.draw()
-		music_clicked = music_button.draw()
-		sfx_clicked = sfx_button.draw()
-		theme_clicked = theme_button.draw()
+		# Draw buttons first
+		start_button.draw()
+		music_button.draw()
+		sfx_button.draw()
+		theme_button.draw()
 		
-		# Check button clicks
-		if start_clicked:
+		# Then check for clicks separately to avoid issues
+		start_clicked = start_button.rect.collidepoint(pygame.mouse.get_pos()) and pygame.mouse.get_pressed()[0] == 1 and not start_button.clicked
+		music_clicked = music_button.rect.collidepoint(pygame.mouse.get_pos()) and pygame.mouse.get_pressed()[0] == 1 and not music_button.clicked
+		sfx_clicked = sfx_button.rect.collidepoint(pygame.mouse.get_pos()) and pygame.mouse.get_pressed()[0] == 1 and not sfx_button.clicked
+		theme_clicked = theme_button.rect.collidepoint(pygame.mouse.get_pos()) and pygame.mouse.get_pressed()[0] == 1 and not theme_button.clicked
+		
+		# Update clicked states and trigger animations
+		if pygame.mouse.get_pressed()[0] == 1:
+			if start_clicked: 
+				start_button.clicked = True
+				start_button.click_animation = True
+				start_button.click_timer = 0
+				start_button.click_scale = start_button.current_scale
+				start_button.animation_complete = False  # Reset animation complete flag
+			if music_clicked: 
+				music_button.clicked = True
+				music_button.click_animation = True
+				music_button.click_timer = 0
+				music_button.click_scale = music_button.current_scale
+				music_button.animation_complete = False  # Reset animation complete flag
+			if sfx_clicked: 
+				sfx_button.clicked = True
+				sfx_button.click_animation = True
+				sfx_button.click_timer = 0
+				sfx_button.click_scale = sfx_button.current_scale
+				sfx_button.animation_complete = False  # Reset animation complete flag
+			if theme_clicked: 
+				theme_button.clicked = True
+				theme_button.click_animation = True
+				theme_button.click_timer = 0
+				theme_button.click_scale = theme_button.current_scale
+				theme_button.animation_complete = False  # Reset animation complete flag
+		else:
+			start_button.clicked = False
+			music_button.clicked = False
+			sfx_button.clicked = False
+			theme_button.clicked = False
+		
+		# Check button clicks - only execute when animation is complete
+		if start_button.animation_complete and start_button.clicked:
 			current_game_state = GAME_STATE_PLAYING
 			# Reset game variables
 			end_state = False
@@ -532,8 +819,10 @@ while run:
 				except:
 					pass
 		
-		if music_clicked:
+		if music_button.animation_complete and music_button.clicked:
 			music_on = not music_on
+			# Update button image based on state
+			music_button.set_image(not music_on)  # Use alt image when music is off
 			if music_on:
 				try:
 					pygame.mixer.music.play(-1)
@@ -545,8 +834,10 @@ while run:
 				except:
 					pass
 		
-		if sfx_clicked:
+		if sfx_button.animation_complete and sfx_button.clicked:
 			sfx_on = not sfx_on
+			# Update button image based on state
+			sfx_button.set_image(not sfx_on)  # Use alt image when SFX is off
 			# Test sound effect when toggling
 			if sfx_on and level_up_effect:
 				try:
@@ -554,18 +845,24 @@ while run:
 				except:
 					pass
 		
-		if theme_clicked:
+		if theme_button.animation_complete and theme_button.clicked:
+			# Cycle through available themes
 			theme_index = (theme_index + 1) % len(theme_colors)
-			update_theme_colors()
+			# Update colors directly without redrawing immediately
+			BRIGHT_COLOR = theme_colors[theme_index]['text']
+			UI_COLOR = theme_colors[theme_index]['bg']
 		
 	elif current_game_state == GAME_STATE_PLAYING and end_state == False:
 		camera_shift = hero.update()
 
 		#draw background - scrolls with player movement
 		background_offset += camera_shift
+		clouds_offset += camera_shift * 0.4  # Clouds move slower for parallax effect
 		if background_offset >= 600:
 			background_offset = 0
-		draw_bg(background_offset)
+		if clouds_offset >= 600:
+			clouds_offset = 0
+		draw_bg(background_offset, clouds_offset)
 
 		#generate floors
 		if len(floor_group) < MAX_FLOORS:
@@ -672,32 +969,86 @@ while run:
 					game_over_effect.play()  # Play game over sound
 			except:
 				pass
+			# Reset game over screen animation
+			game_over_animation_active = True
+			game_over_animation_timer = 0
+			retry_btn_y_pos = SCREEN_HEIGHT + 100
+			main_menu_btn_y_pos = SCREEN_HEIGHT + 100
 			current_game_state = GAME_STATE_OVER
 	elif current_game_state == GAME_STATE_OVER:
-		# Draw game over background
-		screen.blit(game_over_image, (0, 0))
+		# Draw the game over background image
+		screen.blit(game_over_bg_image, (0, 0))
 		
 		# Center-align all text
 		game_over_text = 'Game Over!'
 		text_width = font_game_over.size(game_over_text)[0]
-		draw_text(game_over_text, font_game_over, BRIGHT_COLOR, (SCREEN_WIDTH - text_width) // 2, 180)  # Moved up slightly to accommodate larger font
+		draw_text(game_over_text, font_game_over, BRIGHT_COLOR, (SCREEN_WIDTH - text_width) // 2, 150)  # Moved up to make room for buttons
 		
 		height_text = 'Height:  ' + str(player_height)
 		text_width = font_big.size(height_text)[0]
-		draw_text(height_text, font_big, BRIGHT_COLOR, (SCREEN_WIDTH - text_width) // 2, 250)
+		draw_text(height_text, font_big, BRIGHT_COLOR, (SCREEN_WIDTH - text_width) // 2, 220)
 		
 		# Show 'New High Score' message if player achieved a new high score
 		if new_high_score:
 			high_score_text = 'New High Score!'
 			text_width = font_big.size(high_score_text)[0]
-			draw_text(high_score_text, font_big, (255, 255, 0), (SCREEN_WIDTH - text_width) // 2, 275)  # Yellow color for emphasis
+			draw_text(high_score_text, font_big, (255, 255, 0), (SCREEN_WIDTH - text_width) // 2, 250)  # Yellow color for emphasis
 		
-		retry_text = 'Hit Space or Tap to Retry'
-		text_width = font_big.size(retry_text)[0]
-		draw_text(retry_text, font_big, BRIGHT_COLOR, (SCREEN_WIDTH - text_width) // 2, 300)
-		key = pygame.key.get_pressed()
-		# Check for space key or mouse click to restart
-		if key[pygame.K_SPACE] or pygame.mouse.get_pressed()[0]:
+		# Handle game over screen animations
+		if game_over_animation_active:
+			game_over_animation_timer += 1
+			
+			# Animate retry button rising from bottom
+			if game_over_animation_timer >= game_over_animation_delay:
+				if retry_btn_y_pos > retry_y_pos:
+					retry_btn_y_pos -= animation_speed
+					if retry_btn_y_pos < retry_y_pos:
+						retry_btn_y_pos = retry_y_pos
+			
+			# Animate main menu button rising from bottom (slightly delayed)
+			if game_over_animation_timer >= game_over_animation_delay + 10:
+				if main_menu_btn_y_pos > main_menu_y_pos:
+					main_menu_btn_y_pos -= animation_speed
+					if main_menu_btn_y_pos < main_menu_y_pos:
+						main_menu_btn_y_pos = main_menu_y_pos
+			
+			# Check if all animations are complete
+			if (retry_btn_y_pos == retry_y_pos and 
+				main_menu_btn_y_pos == main_menu_y_pos):
+				game_over_animation_active = False
+		
+		# Update button positions for animation
+		retry_button.rect.y = retry_btn_y_pos
+		main_menu_button.rect.y = main_menu_btn_y_pos
+		
+		# Draw buttons
+		retry_button.draw()
+		main_menu_button.draw()
+		
+		# Check for button clicks
+		retry_clicked = retry_button.rect.collidepoint(pygame.mouse.get_pos()) and pygame.mouse.get_pressed()[0] == 1 and not retry_button.clicked
+		main_menu_clicked = main_menu_button.rect.collidepoint(pygame.mouse.get_pos()) and pygame.mouse.get_pressed()[0] == 1 and not main_menu_button.clicked
+		
+		# Update clicked states and trigger animations
+		if pygame.mouse.get_pressed()[0] == 1:
+			if retry_clicked: 
+				retry_button.clicked = True
+				retry_button.click_animation = True
+				retry_button.click_timer = 0
+				retry_button.click_scale = retry_button.current_scale
+				retry_button.animation_complete = False  # Reset animation complete flag
+			if main_menu_clicked: 
+				main_menu_button.clicked = True
+				main_menu_button.click_animation = True
+				main_menu_button.click_timer = 0
+				main_menu_button.click_scale = main_menu_button.current_scale
+				main_menu_button.animation_complete = False  # Reset animation complete flag
+		else:
+			retry_button.clicked = False
+			main_menu_button.clicked = False
+		
+		# Handle button actions - only execute when animation is complete
+		if retry_button.animation_complete and retry_button.clicked:
 			#reset variables
 			end_state = False
 			player_height = 0
@@ -716,8 +1067,58 @@ while run:
 			#create starting floor
 			floor = Floor(SCREEN_WIDTH // 2 - 50, SCREEN_HEIGHT - 50, 100, False)
 			floor_group.add(floor)
-			# Return to home screen instead of immediately restarting
+			# Start the game immediately
+			current_game_state = GAME_STATE_PLAYING
+			# Restart music if enabled
+			if music_on:
+				try:
+					pygame.mixer.music.play(-1)
+				except:
+					pass
+		
+		elif main_menu_button.animation_complete and main_menu_button.clicked:
+			# Stop any running game processes
+			end_state = False
+			player_height = 0
+			camera_shift = 0
+			level_up_played = False
+			new_high_score = False  # Reset high score flag
+			show_instructions = True  # Show instructions again on restart
+			instruction_timer = 0
+			
+			# Reset player position
+			hero.hitbox.center = (SCREEN_WIDTH // 2, SCREEN_HEIGHT - 150)
+			hero.move_left = False
+			hero.move_right = False
+			
+			# Reset game objects
+			floor_group.empty()
+			jet_group.empty()
+			floor = Floor(SCREEN_WIDTH // 2 - 50, SCREEN_HEIGHT - 50, 100, False)
+			floor_group.add(floor)
+			
+			# Switch to home screen state
 			current_game_state = GAME_STATE_HOME
+			
+			# Reset home screen animations completely
+			home_animation_active = True
+			logo_y_pos = -200
+			start_btn_scale = 0.0
+			start_btn_phase = START_BTN_PHASE_HIDDEN
+			music_btn_y_pos = SCREEN_HEIGHT + 100
+			sfx_btn_y_pos = SCREEN_HEIGHT + 100
+			theme_btn_y_pos = SCREEN_HEIGHT + 100
+			animation_timer = 0
+			
+			# Reset button states
+			start_button.clicked = False
+			start_button.animation_complete = False
+			music_button.clicked = False
+			music_button.animation_complete = False
+			sfx_button.clicked = False
+			sfx_button.animation_complete = False
+			theme_button.clicked = False
+			theme_button.animation_complete = False
 
 	#event handler
 	for event in pygame.event.get():
