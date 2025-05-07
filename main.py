@@ -36,10 +36,17 @@ jet_char_sprite = pygame.image.load(resource_path('assets/jet-char.png')).conver
 background_image = pygame.image.load(resource_path('assets/bg.png')).convert_alpha()
 floor_sprite = pygame.image.load(resource_path('assets/platform.png')).convert_alpha()
 game_over_image = pygame.image.load(resource_path('assets/over.png')).convert_alpha()
+game_logo_image = pygame.image.load(resource_path('assets/hop.it.png')).convert_alpha()
 
 #load button images
 left_btn_image = pygame.image.load(resource_path('assets/left-btn.png')).convert_alpha()
 right_btn_image = pygame.image.load(resource_path('assets/right-btn.png')).convert_alpha()
+
+# Load button images for home screen
+start_btn_image = pygame.image.load(resource_path('assets/Start.png')).convert_alpha()
+music_btn_image = pygame.image.load(resource_path('assets/Music.png')).convert_alpha()
+sfx_btn_image = pygame.image.load(resource_path('assets/SFX.png')).convert_alpha()
+theme_btn_image = pygame.image.load(resource_path('assets/Theme.png')).convert_alpha()
 
 #set window icon
 # pygame.display.set_icon(jump1_sprite)
@@ -61,10 +68,29 @@ show_instructions = True  # Flag to show instructions at start
 instruction_timer = 0  # Timer for how long to show instructions
 new_high_score = False  # Flag to track if a new high score was achieved
 
+# Game state management
+GAME_STATE_HOME = 0
+GAME_STATE_PLAYING = 1
+GAME_STATE_OVER = 2
+current_game_state = GAME_STATE_HOME
+
+# Theme settings
+theme_index = 0
+theme_colors = [
+    {'name': 'Default', 'bg': (6, 56, 107), 'text': (255, 255, 255)},
+    {'name': 'Dark', 'bg': (30, 30, 30), 'text': (220, 220, 220)},
+    {'name': 'Neon', 'bg': (0, 0, 0), 'text': (0, 255, 0)},
+    {'name': 'Pastel', 'bg': (255, 230, 230), 'text': (70, 70, 100)}
+]
+
+# Sound settings
+music_on = True
+sfx_on = True
+
 #define colours
-BRIGHT_COLOR = (255, 255, 255)
+BRIGHT_COLOR = theme_colors[theme_index]['text']
 DARK_COLOR = (0, 0, 0)
-UI_COLOR = (6, 56, 107)
+UI_COLOR = theme_colors[theme_index]['bg']
 
 # Create fade surface for game over screen
 # fade_surface = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
@@ -87,6 +113,7 @@ font_small = pygame.font.SysFont('Lucida Sans', 20)
 font_big = pygame.font.SysFont('Lucida Sans', 24, bold=True)
 font_instruction = pygame.font.SysFont('Lucida Sans', 18, bold=True)  # Smaller font for instructions
 font_game_over = pygame.font.SysFont('Lucida Sans', 36, bold=True)  # Larger font for Game Over text
+font_status = pygame.font.SysFont('Lucida Sans', 16, bold=True)  # Small bold font for button status indicators
 
 # Load sounds
 
@@ -384,19 +411,157 @@ button_padding = 30
 left_button = Button(button_padding, SCREEN_HEIGHT - button_padding - left_btn_image.get_height() * button_scale, left_btn_image, button_scale)
 right_button = Button(SCREEN_WIDTH - button_padding - right_btn_image.get_width() * button_scale, SCREEN_HEIGHT - button_padding - right_btn_image.get_height() * button_scale, right_btn_image, button_scale)
 
+# Home screen buttons - layout based on the provided image
+button_scale = 0.8  # Scale factor for buttons
+
+# Scale and position the game logo at the top
+logo_scale = 0.6  # Adjust this value to fit the screen properly
+logo_width = game_logo_image.get_width() * logo_scale
+logo_height = game_logo_image.get_height() * logo_scale
+logo_image = pygame.transform.scale(game_logo_image, (int(logo_width), int(logo_height)))
+
+# Start button positioned lower on the screen
+start_width = start_btn_image.get_width() * button_scale
+start_height = start_btn_image.get_height() * button_scale
+start_button = Button(SCREEN_WIDTH//2 - start_width//2, SCREEN_HEIGHT//2 - start_height//2, start_btn_image, button_scale)
+
+# Row of smaller buttons at the bottom
+small_btn_width = music_btn_image.get_width() * button_scale
+small_btn_height = music_btn_image.get_height() * button_scale
+button_spacing = 20  # Space between buttons
+total_width = 3 * small_btn_width + 2 * button_spacing
+
+# Position the row of buttons centered at the bottom
+row_start_x = SCREEN_WIDTH//2 - total_width//2
+row_y = SCREEN_HEIGHT * 3//4  # Moved further down
+
+music_button = Button(row_start_x, row_y, music_btn_image, button_scale)
+sfx_button = Button(row_start_x + small_btn_width + button_spacing, row_y, sfx_btn_image, button_scale)
+theme_button = Button(row_start_x + 2 * (small_btn_width + button_spacing), row_y, theme_btn_image, button_scale)
+
 #create starting floor
 floor = Floor(SCREEN_WIDTH // 2 - 50, SCREEN_HEIGHT - 50, 100, False)
 floor_group.add(floor)
+
+# Function to update theme colors
+def update_theme_colors():
+	global BRIGHT_COLOR, UI_COLOR
+	BRIGHT_COLOR = theme_colors[theme_index]['text']
+	UI_COLOR = theme_colors[theme_index]['bg']
 
 #game loop
 run = True
 while run:
 	clock.tick(FPS)
 
-	if end_state == False:
+	# Draw background based on game state
+	if current_game_state == GAME_STATE_HOME:
+		# Auto-scrolling background on home screen
+		background_offset += 0.5  # Slow background movement
+		if background_offset >= 600:
+			background_offset = 0
+		draw_bg(background_offset)
+
+	if current_game_state == GAME_STATE_HOME:
+		# Draw home screen
+		# Draw the game logo at the top
+		screen.blit(logo_image, (SCREEN_WIDTH // 2 - logo_width // 2, 50))
+		
+		# High score display
+		best_text = f'Best: {best_height}'
+		text_width = font_big.size(best_text)[0]
+		draw_text(best_text, font_big, BRIGHT_COLOR, SCREEN_WIDTH - text_width - 10, 10)
+		
+		# Draw buttons - no text needed as images have text
+		start_button.draw()
+		
+		# Draw status indicators next to buttons
+		music_status = "ON" if music_on else "OFF"
+		sfx_status = "ON" if sfx_on else "OFF"
+		theme_name = theme_colors[theme_index]['name']
+		
+		# Draw the buttons
+		music_button.draw()
+		sfx_button.draw()
+		theme_button.draw()
+		
+		# Draw status indicators below buttons using small bold font
+		draw_text(music_status, font_status, BRIGHT_COLOR, 
+			music_button.rect.centerx - font_status.size(music_status)[0]//2, 
+			music_button.rect.bottom + 10)
+		
+		draw_text(sfx_status, font_status, BRIGHT_COLOR, 
+			sfx_button.rect.centerx - font_status.size(sfx_status)[0]//2, 
+			sfx_button.rect.bottom + 10)
+		
+		draw_text(theme_name, font_status, BRIGHT_COLOR, 
+			theme_button.rect.centerx - font_status.size(theme_name)[0]//2, 
+			theme_button.rect.bottom + 10)
+		
+		# Store button states before checking clicks to avoid double-triggering
+		start_clicked = start_button.draw()
+		music_clicked = music_button.draw()
+		sfx_clicked = sfx_button.draw()
+		theme_clicked = theme_button.draw()
+		
+		# Check button clicks
+		if start_clicked:
+			current_game_state = GAME_STATE_PLAYING
+			# Reset game variables
+			end_state = False
+			player_height = 0
+			camera_shift = 0
+			level_up_played = False
+			new_high_score = False
+			show_instructions = True
+			instruction_timer = 0
+			# Reset hero position
+			hero.hitbox.center = (SCREEN_WIDTH // 2, SCREEN_HEIGHT - 150)
+			hero.move_left = False
+			hero.move_right = False
+			# Reset floors and jets
+			floor_group.empty()
+			jet_group.empty()
+			# Create starting floor
+			floor = Floor(SCREEN_WIDTH // 2 - 50, SCREEN_HEIGHT - 50, 100, False)
+			floor_group.add(floor)
+			# Start music if enabled
+			if music_on:
+				try:
+					pygame.mixer.music.play(-1)
+				except:
+					pass
+		
+		if music_clicked:
+			music_on = not music_on
+			if music_on:
+				try:
+					pygame.mixer.music.play(-1)
+				except:
+					pass
+			else:
+				try:
+					pygame.mixer.music.stop()
+				except:
+					pass
+		
+		if sfx_clicked:
+			sfx_on = not sfx_on
+			# Test sound effect when toggling
+			if sfx_on and level_up_effect:
+				try:
+					level_up_effect.play()
+				except:
+					pass
+		
+		if theme_clicked:
+			theme_index = (theme_index + 1) % len(theme_colors)
+			update_theme_colors()
+		
+	elif current_game_state == GAME_STATE_PLAYING and end_state == False:
 		camera_shift = hero.update()
 
-		#draw background
+		#draw background - scrolls with player movement
 		background_offset += camera_shift
 		if background_offset >= 600:
 			background_offset = 0
@@ -475,8 +640,8 @@ while run:
 			if instruction_timer > 180:  # Show for 3 seconds (60 FPS * 3)
 				show_instructions = False
 		
-		# Play level up sound when passing best height
-		if player_height > best_height and not end_state and level_up_effect and not level_up_played:
+		# Play level up sound when passing best height (if SFX enabled)
+		if player_height > best_height and not end_state and level_up_effect and not level_up_played and sfx_on:
 			level_up_effect.play()
 			level_up_played = True
 
@@ -500,13 +665,15 @@ while run:
 						file.write(str(best_height))
 				except Exception as e:
 					print(f"Could not save score: {e}")
-			# Fade out music and play game over sound
+			# Fade out music and play game over sound if SFX is enabled
 			try:
 				pygame.mixer.music.fadeout(1000)  # Fade out over 1 second
-				game_over_effect.play()  # Play game over sound
+				if sfx_on and game_over_effect:
+					game_over_effect.play()  # Play game over sound
 			except:
 				pass
-	else:
+			current_game_state = GAME_STATE_OVER
+	elif current_game_state == GAME_STATE_OVER:
 		# Draw game over background
 		screen.blit(game_over_image, (0, 0))
 		
@@ -549,11 +716,8 @@ while run:
 			#create starting floor
 			floor = Floor(SCREEN_WIDTH // 2 - 50, SCREEN_HEIGHT - 50, 100, False)
 			floor_group.add(floor)
-			# Restart background music
-			try:
-				pygame.mixer.music.play(-1)
-			except:
-				pass
+			# Return to home screen instead of immediately restarting
+			current_game_state = GAME_STATE_HOME
 
 	#event handler
 	for event in pygame.event.get():
@@ -563,6 +727,7 @@ while run:
 				best_height = player_height
 				try:
 					# Get the appropriate directory to save the score file
+					# For executable, use the user's documents folder
 					if hasattr(sys, '_MEIPASS'):
 						save_dir = os.path.dirname(os.path.abspath(sys.argv[0]))
 					else:
