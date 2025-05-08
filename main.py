@@ -365,7 +365,7 @@ def draw_bg(background_offset, clouds_offset):
 class Jet(pygame.sprite.Sprite):
 	def __init__(self, x, y):
 		pygame.sprite.Sprite.__init__(self)
-		self.image = pygame.transform.scale(jet_sprite, (30, 30))
+		self.image = jet_sprite#pygame.transform.scale(jet_sprite, (30, 30))
 		self.rect = self.image.get_rect()
 		self.rect.center = (x, y)
 
@@ -378,10 +378,10 @@ class Jet(pygame.sprite.Sprite):
 #player class
 class Hero():
 	def __init__(self, x, y):
-		self.jump1 = pygame.transform.scale(jump1_sprite, (45, 45))
-		self.jump2 = pygame.transform.scale(jump2_sprite, (45, 45))
-		self.jump3 = pygame.transform.scale(jump3_sprite, (45, 45))
-		self.jet_char = pygame.transform.scale(jet_char_sprite, (45, 45))
+		self.jump1 = jump1_sprite#pygame.transform.scale(jump1_sprite, (45, 45))
+		self.jump2 = jump2_sprite#pygame.transform.scale(jump2_sprite, (45, 45))
+		self.jump3 = jump3_sprite#pygame.transform.scale(jump3_sprite, (45, 45))
+		self.jet_char = jet_char_sprite#pygame.transform.scale(jet_char_sprite, (45, 45))
 		self.current_sprite = self.jump1
 		self.width = 25
 		self.height = 40
@@ -562,10 +562,10 @@ right_button = Button(SCREEN_WIDTH - button_padding - right_btn_image.get_width(
 button_scale = 0.8  # Scale factor for buttons
 
 # Scale and position the game logo at the top
-logo_scale = 0.6  # Adjust this value to fit the screen properly
-logo_width = game_logo_image.get_width() * logo_scale
-logo_height = game_logo_image.get_height() * logo_scale
-logo_image = pygame.transform.scale(game_logo_image, (int(logo_width), int(logo_height)))
+# logo_scale = 0.6  # Adjust this value to fit the screen properly
+logo_width = 224#game_logo_image.get_width() * logo_scale
+logo_height = 143#game_logo_image.get_height() * logo_scale
+# logo_image = pygame.transform.scale(game_logo_image, (int(logo_width), int(logo_height)))
 
 # Start button positioned lower on the screen
 start_width = start_btn_image.get_width() * button_scale
@@ -573,8 +573,8 @@ start_height = start_btn_image.get_height() * button_scale
 start_button = Button(SCREEN_WIDTH//2 - start_width//2, SCREEN_HEIGHT//2 - start_height//2, start_btn_image, button_scale)
 
 # Row of smaller buttons at the bottom
-small_btn_width = music_btn_image.get_width() * button_scale
-small_btn_height = music_btn_image.get_height() * button_scale
+small_btn_width = music_btn_image.get_width() 
+small_btn_height = music_btn_image.get_height() 
 button_spacing = 20  # Space between buttons
 total_width = 3 * small_btn_width + 2 * button_spacing
 
@@ -582,31 +582,31 @@ total_width = 3 * small_btn_width + 2 * button_spacing
 row_start_x = SCREEN_WIDTH//2 - total_width//2
 row_y = SCREEN_HEIGHT * 3//4  # Moved further down
 
-music_button = Button(row_start_x, row_y, music_btn_image, button_scale, music_off_btn_image)
-sfx_button = Button(row_start_x + small_btn_width + button_spacing, row_y, sfx_btn_image, button_scale, sfx_off_btn_image)
-theme_button = Button(row_start_x + 2 * (small_btn_width + button_spacing), row_y, theme_btn_image, button_scale)
+music_button = Button(row_start_x, row_y, music_btn_image, 1.0, music_off_btn_image)
+sfx_button = Button(row_start_x + small_btn_width + button_spacing, row_y, sfx_btn_image, 1.0, sfx_off_btn_image)
+theme_button = Button(row_start_x + 2 * (small_btn_width + button_spacing), row_y, theme_btn_image, 1.0)
 
 # Game over screen buttons
 game_over_button_scale = 0.8
-retry_width = retry_btn_image.get_width() * game_over_button_scale
-retry_height = retry_btn_image.get_height() * game_over_button_scale
-main_menu_width = main_menu_btn_image.get_width() * game_over_button_scale
-main_menu_height = main_menu_btn_image.get_height() * game_over_button_scale
+retry_width = 175#retry_btn_image.get_width() * game_over_button_scale
+retry_height = 88#retry_btn_image.get_height() * game_over_button_scale
+main_menu_width = 175#main_menu_btn_image.get_width() * game_over_button_scale
+main_menu_height = 88#main_menu_btn_image.get_height() * game_over_button_scale
 
 # Position buttons vertically with spacing
 game_over_button_spacing = 40  # Increased spacing between buttons
 retry_y_pos = SCREEN_HEIGHT//2 - retry_height//2 + 40  # Position retry button above center
 main_menu_y_pos = SCREEN_HEIGHT//2 + main_menu_height//2 + 55  # Position main menu button below center
 
-retry_button = Button(SCREEN_WIDTH//2 - retry_width//2, retry_y_pos, retry_btn_image, game_over_button_scale)
-main_menu_button = Button(SCREEN_WIDTH//2 - main_menu_width//2, main_menu_y_pos, main_menu_btn_image, game_over_button_scale)
+retry_button = Button(SCREEN_WIDTH//2 - retry_width//2, retry_y_pos, retry_btn_image, 1.0)
+main_menu_button = Button(SCREEN_WIDTH//2 - main_menu_width//2, main_menu_y_pos, main_menu_btn_image, 1.0)
 
 # Game over screen animation variables
 retry_btn_y_pos = SCREEN_HEIGHT + 100  		# Start below screen
 main_menu_btn_y_pos = SCREEN_HEIGHT + 100  # Start below screen
 game_over_animation_active = False
 game_over_animation_timer = 0
-game_over_animation_delay = 30  # Delay before buttons appear
+game_over_animation_delay = [30, 45]  # Separate delays for each button [retry, main_menu]
 
 # Initialize button images based on initial states
 music_button.set_image(not music_on)
@@ -713,7 +713,7 @@ while run:
 				home_animation_active = False
 		
 		# Draw the game logo at its current animated position
-		screen.blit(logo_image, (SCREEN_WIDTH // 2 - logo_width // 2, logo_y_pos))
+		screen.blit(game_logo_image, (SCREEN_WIDTH // 2 - logo_width // 2, logo_y_pos))
 		
 		# Update button positions and scales for animation
 		start_button.update_scale(start_btn_scale)  # Apply pop animation scale
@@ -999,14 +999,14 @@ while run:
 			game_over_animation_timer += 1
 			
 			# Animate retry button rising from bottom
-			if game_over_animation_timer >= game_over_animation_delay:
+			if game_over_animation_timer >= game_over_animation_delay[0]:
 				if retry_btn_y_pos > retry_y_pos:
 					retry_btn_y_pos -= animation_speed
 					if retry_btn_y_pos < retry_y_pos:
 						retry_btn_y_pos = retry_y_pos
 			
-			# Animate main menu button rising from bottom (slightly delayed)
-			if game_over_animation_timer >= game_over_animation_delay + 10:
+			# Animate main menu button rising from bottom
+			if game_over_animation_timer >= game_over_animation_delay[1]:
 				if main_menu_btn_y_pos > main_menu_y_pos:
 					main_menu_btn_y_pos -= animation_speed
 					if main_menu_btn_y_pos < main_menu_y_pos:
