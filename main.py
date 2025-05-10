@@ -16,6 +16,8 @@ def resource_path(relative_path):
     
     return os.path.join(base_path, relative_path)
 
+
+
 #initialise pygame
 pygame.init()
 pygame.mixer.init()  # Initialize the mixer for sound effects
@@ -113,10 +115,12 @@ start_btn_phase = START_BTN_PHASE_HIDDEN
 # Theme settings
 theme_index = 0
 theme_colors = [
-    {'name': 'Orange', 'bg': (6, 56, 107), 'text': (255, 165, 0)},  # Orange (default)
-    {'name': 'Light Blue', 'bg': (6, 56, 107), 'text': (135, 206, 250)},  # Light Blue
-    {'name': 'Mustard', 'bg': (6, 56, 107), 'text': (225, 173, 1)},  # Mustard
-    {'name': 'Beige', 'bg': (6, 56, 107), 'text': (255, 253, 208)}  # Beige
+    {'name': 'Theme', 'bg': (6, 56, 107), 'text': (245, 169, 25)},  # Orange (default)
+    {'name': 'Sky', 'bg': (6, 56, 107), 'text': (135, 206, 250)},  # Light Blue
+	{'name': 'Mint', 'bg': (6, 56, 107), 'text': (135, 214, 194)},
+	{'name': 'Lavender', 'bg': (6, 56, 107), 'text': (208, 138, 255)},
+	{'name': 'Gray', 'bg': (6, 56, 107), 'text': (205, 214, 192)},
+	{'name': 'Beige', 'bg': (6, 56, 107), 'text': (255, 252, 176)}  # Beige
 ]
 
 # Sound settings
@@ -397,6 +401,8 @@ class Hero():
 		self.jet_platforms = 0
 		self.move_left = False
 		self.move_right = False
+		self.left_press_time = 0
+		self.right_press_time = 0
 
 	def update(self):
 		#reset movement variables
@@ -409,17 +415,29 @@ class Hero():
 		if keys[pygame.K_LEFT]:
 			horizontal_move = -10
 			self.facing_left = True
-		elif self.move_left:  # Use elif to prevent keyboard and button input conflicts
-			horizontal_move = -8  # Matched with keyboard input for better responsiveness
+		elif self.move_left:  # On-screen button input
+			self.left_press_time += 1
+			if self.left_press_time < 10:  # Short press
+				horizontal_move = -5  # Slower speed for quick taps
+			else:  # Long press
+				horizontal_move = -8  # Normal speed for held press
 			self.facing_left = True
 		if keys[pygame.K_RIGHT]:
 			horizontal_move = 10
 			self.facing_left = False
-		elif self.move_right:  # Use elif to prevent keyboard and button input conflicts
-			horizontal_move = 8  # Matched with keyboard input for better responsiveness
+		elif self.move_right:  # On-screen button input
+			self.right_press_time += 1
+			if self.right_press_time < 10:  # Short press
+				horizontal_move = 5  # Slower speed for quick taps
+			else:  # Long press
+				horizontal_move = 8  # Normal speed for held press
 			self.facing_left = False
 		
 		#reset movement flags
+		if not self.move_left:
+			self.left_press_time = 0
+		if not self.move_right:
+			self.right_press_time = 0
 		self.move_left = False
 		self.move_right = False
 
@@ -812,8 +830,8 @@ while run:
 			# Create starting floor
 			floor = Floor(SCREEN_WIDTH // 2 - 50, SCREEN_HEIGHT - 50, 100, False)
 			floor_group.add(floor)
-			# Start music if enabled
-			if music_on:
+			# Start music if enabled and not already playing
+			if music_on and not pygame.mixer.music.get_busy():
 				try:
 					pygame.mixer.music.play(-1)
 				except:
@@ -823,7 +841,7 @@ while run:
 			music_on = not music_on
 			# Update button image based on state
 			music_button.set_image(not music_on)  # Use alt image when music is off
-			if music_on:
+			if music_on and not pygame.mixer.music.get_busy():
 				try:
 					pygame.mixer.music.play(-1)
 				except:
@@ -1119,6 +1137,13 @@ while run:
 			sfx_button.animation_complete = False
 			theme_button.clicked = False
 			theme_button.animation_complete = False
+			
+			# Restart music if enabled
+			if music_on:
+				try:
+					pygame.mixer.music.play(-1)
+				except:
+					pass
 
 	#event handler
 	for event in pygame.event.get():
