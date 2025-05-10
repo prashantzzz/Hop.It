@@ -1,9 +1,8 @@
 #import libraries
-import pygame
-import random
-import os
-import sys
+import pygame, os, random, sys
 import math
+from input_field import InputField
+from online_client import OnlineClient
 
 # Helper function to handle resource paths for both development and PyInstaller
 def resource_path(relative_path):
@@ -55,6 +54,12 @@ sfx_btn_image = pygame.image.load(resource_path('assets/SFX.png')).convert_alpha
 sfx_off_btn_image = pygame.image.load(resource_path('assets/SFXoff.png')).convert_alpha()
 theme_btn_image = pygame.image.load(resource_path('assets/Theme.png')).convert_alpha()
 
+# Create online button image from theme button by changing color
+online_btn_image = theme_btn_image.copy()
+online_btn_surface = pygame.Surface((online_btn_image.get_width(), online_btn_image.get_height()), pygame.SRCALPHA)
+online_btn_surface.fill((100, 100, 255, 150))  # Blue tint
+online_btn_image.blit(online_btn_surface, (0, 0), special_flags=pygame.BLEND_RGBA_MULT)
+
 # Load game over screen button images
 retry_btn_image = pygame.image.load(resource_path('assets/retry.png')).convert_alpha()
 main_menu_btn_image = pygame.image.load(resource_path('assets/main-menu.png')).convert_alpha()
@@ -83,11 +88,32 @@ show_instructions = True  # Flag to show instructions at start
 instruction_timer = 0  # Timer for how long to show instructions
 new_high_score = False  # Flag to track if a new high score was achieved
 
-# Game state management
+# Game state constants
 GAME_STATE_HOME = 0
 GAME_STATE_PLAYING = 1
 GAME_STATE_OVER = 2
+GAME_STATE_ONLINE_SETUP = 3
+GAME_STATE_ONLINE_WAITING = 4
+GAME_STATE_ONLINE_PLAYING = 5
+GAME_STATE_ONLINE_RESULT = 6
+GAME_STATE_CONNECTION_ERROR = 7  # New state for handling connection errors
 current_game_state = GAME_STATE_HOME
+
+# Online game variables
+online_mode = False
+online_room_code = ""
+online_client = OnlineClient()
+online_win = False
+online_status_message = "Enter a room code or create a new room"
+online_error_message = ""
+
+# Font for online UI elements
+font_online = pygame.font.Font(None, 28)
+# Initialize online input field and buttons later
+room_input = None
+create_room_button = None
+join_room_button = None
+online_win = False  # True if player won, False if lost
 
 # Animation settings for home screen
 home_animation_active = True
@@ -99,9 +125,10 @@ start_btn_y_pos = SCREEN_HEIGHT//2  # Fixed Y position
 music_btn_y_pos = SCREEN_HEIGHT + 100  # Start below screen
 sfx_btn_y_pos = SCREEN_HEIGHT + 100
 theme_btn_y_pos = SCREEN_HEIGHT + 100
+online_btn_y_pos = SCREEN_HEIGHT + 100
 buttons_target_y = SCREEN_HEIGHT * 3//4
 animation_speed = 10
-animation_delay = [0, 15, 30, 45, 60]  # Delays for each element [logo, start, music, sfx, theme]
+animation_delay = [0, 15, 30, 45, 60, 75]  # Delays for each element [logo, start, music, sfx, theme, online]
 animation_timer = 0
 
 # Start button pop animation phases
@@ -151,8 +178,9 @@ else:
 
 #define font
 font_small = pygame.font.SysFont('Lucida Sans', 20)
-font_big = pygame.font.SysFont('Lucida Sans', 24, bold=True)
+font_big = pygame.font.SysFont('Lucida Sans', 24)
 font_instruction = pygame.font.SysFont('Lucida Sans', 18, bold=True)  # Smaller font for instructions
+font_online = pygame.font.SysFont('Lucida Sans', 18)  # Font for online UI elements
 font_game_over = pygame.font.SysFont('Lucida Sans', 42, bold=True)  # Larger font for Game Over text
 font_status = pygame.font.SysFont('Lucida Sans', 16, bold=True)  # Small bold font for button status indicators
 
@@ -594,7 +622,7 @@ start_button = Button(SCREEN_WIDTH//2 - start_width//2, SCREEN_HEIGHT//2 - start
 small_btn_width = music_btn_image.get_width() 
 small_btn_height = music_btn_image.get_height() 
 button_spacing = 20  # Space between buttons
-total_width = 3 * small_btn_width + 2 * button_spacing
+total_width = 4 * small_btn_width + 3 * button_spacing
 
 # Position the row of buttons centered at the bottom
 row_start_x = SCREEN_WIDTH//2 - total_width//2
@@ -603,6 +631,7 @@ row_y = SCREEN_HEIGHT * 3//4  # Moved further down
 music_button = Button(row_start_x, row_y, music_btn_image, 1.0, music_off_btn_image)
 sfx_button = Button(row_start_x + small_btn_width + button_spacing, row_y, sfx_btn_image, 1.0, sfx_off_btn_image)
 theme_button = Button(row_start_x + 2 * (small_btn_width + button_spacing), row_y, theme_btn_image, 1.0)
+online_button = Button(row_start_x + 3 * (small_btn_width + button_spacing), row_y, online_btn_image, 1.0)
 
 # Game over screen buttons
 game_over_button_scale = 0.8
@@ -619,6 +648,14 @@ main_menu_y_pos = SCREEN_HEIGHT//2 + main_menu_height//2 + 55  # Position main m
 retry_button = Button(SCREEN_WIDTH//2 - retry_width//2, retry_y_pos, retry_btn_image, 1.0)
 main_menu_button = Button(SCREEN_WIDTH//2 - main_menu_width//2, main_menu_y_pos, main_menu_btn_image, 1.0)
 
+# Initialize online play buttons
+create_room_button = Button(SCREEN_WIDTH//2 - 110, SCREEN_HEIGHT//2, theme_btn_image, 0.8)
+join_room_button = Button(SCREEN_WIDTH//2 + 10, SCREEN_HEIGHT//2, theme_btn_image, 0.8)
+back_button = Button(SCREEN_WIDTH//2 - 50, SCREEN_HEIGHT//2 + 80, theme_btn_image, 0.8)
+
+# Initialize input field for room code
+room_input = InputField(SCREEN_WIDTH//2 - 100, SCREEN_HEIGHT//2 - 50, 200, 32, font_online, (220, 220, 220))
+
 # Game over screen animation variables
 retry_btn_y_pos = SCREEN_HEIGHT + 100  		# Start below screen
 main_menu_btn_y_pos = SCREEN_HEIGHT + 100  # Start below screen
@@ -629,6 +666,12 @@ game_over_animation_delay = [30, 45]  # Separate delays for each button [retry, 
 # Initialize button images based on initial states
 music_button.set_image(not music_on)
 sfx_button.set_image(not sfx_on)
+
+# Create online screen buttons and input field
+room_input = InputField(SCREEN_WIDTH//2 - 100, SCREEN_HEIGHT//2 - 60, 200, 40, font_online)
+create_room_button = Button(SCREEN_WIDTH//2 - 110, SCREEN_HEIGHT//2 + 10, theme_btn_image, 1.0)
+join_room_button = Button(SCREEN_WIDTH//2 + 10, SCREEN_HEIGHT//2 + 10, theme_btn_image, 1.0)
+back_button = Button(SCREEN_WIDTH//2 - 50, SCREEN_HEIGHT//2 + 80, theme_btn_image, 0.8)
 
 #create starting floor
 floor = Floor(SCREEN_WIDTH // 2 - 50, SCREEN_HEIGHT - 50, 100, False)
@@ -722,12 +765,20 @@ while run:
 					if theme_btn_y_pos < buttons_target_y:
 						theme_btn_y_pos = buttons_target_y
 			
+			# Animate online button rising from bottom
+			if animation_timer >= animation_delay[5]:
+				if online_btn_y_pos > buttons_target_y:
+					online_btn_y_pos -= animation_speed
+					if online_btn_y_pos < buttons_target_y:
+						online_btn_y_pos = buttons_target_y
+			
 			# Check if all animations are complete
 			if (logo_y_pos == logo_target_y and 
 				start_btn_phase == START_BTN_PHASE_DONE and 
 				music_btn_y_pos == buttons_target_y and 
 				sfx_btn_y_pos == buttons_target_y and 
-				theme_btn_y_pos == buttons_target_y):
+				theme_btn_y_pos == buttons_target_y and
+				online_btn_y_pos == buttons_target_y):
 				home_animation_active = False
 		
 		# Draw the game logo at its current animated position
@@ -738,6 +789,7 @@ while run:
 		music_button.rect.y = music_btn_y_pos
 		sfx_button.rect.y = sfx_btn_y_pos
 		theme_button.rect.y = theme_btn_y_pos
+		online_button.rect.y = online_btn_y_pos
 		
 		# Set visibility based on animation state
 		start_button.visible = start_btn_scale > 0.01  # Only visible when scale is significant
@@ -747,6 +799,7 @@ while run:
 		music_button.draw()
 		sfx_button.draw()
 		theme_button.draw()
+		online_button.draw()
 		
 		# Draw status indicators below buttons using small bold font
 		music_status = "ON" if music_on else "OFF"
@@ -765,6 +818,12 @@ while run:
 			theme_button.rect.centerx - font_status.size(theme_name)[0]//2, 
 			theme_button.rect.bottom + 10)
 		
+		# Online status indicator
+		online_status = "ONLINE" 
+		draw_text(online_status, font_status, BRIGHT_COLOR, 
+			online_button.rect.centerx - font_status.size(online_status)[0]//2, 
+			online_button.rect.bottom + 10)
+		
 		# Draw buttons first
 		start_button.draw()
 		music_button.draw()
@@ -772,10 +831,11 @@ while run:
 		theme_button.draw()
 		
 		# Then check for clicks separately to avoid issues
-		start_clicked = start_button.rect.collidepoint(pygame.mouse.get_pos()) and pygame.mouse.get_pressed()[0] == 1 and not start_button.clicked
+		start_clicked = start_button.rect.collidepoint(pygame.mouse.get_pos()) and pygame.mouse.get_pressed()[0] == 1 and not start_button.clicked and start_btn_phase == START_BTN_PHASE_VISIBLE
 		music_clicked = music_button.rect.collidepoint(pygame.mouse.get_pos()) and pygame.mouse.get_pressed()[0] == 1 and not music_button.clicked
 		sfx_clicked = sfx_button.rect.collidepoint(pygame.mouse.get_pos()) and pygame.mouse.get_pressed()[0] == 1 and not sfx_button.clicked
 		theme_clicked = theme_button.rect.collidepoint(pygame.mouse.get_pos()) and pygame.mouse.get_pressed()[0] == 1 and not theme_button.clicked
+		online_clicked = online_button.rect.collidepoint(pygame.mouse.get_pos()) and pygame.mouse.get_pressed()[0] == 1 and not online_button.clicked
 		
 		# Update clicked states and trigger animations
 		if pygame.mouse.get_pressed()[0] == 1:
@@ -803,11 +863,18 @@ while run:
 				theme_button.click_timer = 0
 				theme_button.click_scale = theme_button.current_scale
 				theme_button.animation_complete = False  # Reset animation complete flag
+			if online_clicked: 
+				online_button.clicked = True
+				online_button.click_animation = True
+				online_button.click_timer = 0
+				online_button.click_scale = online_button.current_scale
+				online_button.animation_complete = False  # Reset animation complete flag
 		else:
 			start_button.clicked = False
 			music_button.clicked = False
 			sfx_button.clicked = False
 			theme_button.clicked = False
+			online_button.clicked = False
 		
 		# Check button clicks - only execute when animation is complete
 		if start_button.animation_complete and start_button.clicked:
@@ -869,6 +936,15 @@ while run:
 			# Update colors directly without redrawing immediately
 			BRIGHT_COLOR = theme_colors[theme_index]['text']
 			UI_COLOR = theme_colors[theme_index]['bg']
+		
+		if online_button.animation_complete and online_button.clicked:
+			# Reset online variables
+			online_mode = True
+			online_room_code = ""
+			online_input_active = True
+			online_status_message = "Enter room code"
+			online_error_message = ""
+			current_game_state = GAME_STATE_ONLINE_SETUP
 		
 	elif current_game_state == GAME_STATE_PLAYING and end_state == False:
 		camera_shift = hero.update()
@@ -993,6 +1069,446 @@ while run:
 			retry_btn_y_pos = SCREEN_HEIGHT + 100
 			main_menu_btn_y_pos = SCREEN_HEIGHT + 100
 			current_game_state = GAME_STATE_OVER
+	elif current_game_state == GAME_STATE_ONLINE_SETUP:
+		# Draw background
+		background_offset += 0.5  # Slow background movement
+		clouds_offset += 0.2  # Even slower clouds movement for parallax effect
+		if background_offset >= 600:
+			background_offset = 0
+		if clouds_offset >= 600:
+			clouds_offset = 0
+		draw_bg(background_offset, clouds_offset)
+		
+		# Draw screen title
+		title_text = "ONLINE PLAY"
+		draw_text(title_text, font_game_over, BRIGHT_COLOR, SCREEN_WIDTH//2 - font_game_over.size(title_text)[0]//2, 100)
+		
+		# Draw instructions
+		instruction_text = online_status_message
+		draw_text(instruction_text, font_big, BRIGHT_COLOR, SCREEN_WIDTH//2 - font_big.size(instruction_text)[0]//2, SCREEN_HEIGHT//2 - 100)
+		
+		# Draw input field background
+		pygame.draw.rect(screen, (20, 20, 40), pygame.Rect(SCREEN_WIDTH//2 - 110, SCREEN_HEIGHT//2 - 70, 220, 60), 0, 10)
+		pygame.draw.rect(screen, BRIGHT_COLOR, pygame.Rect(SCREEN_WIDTH//2 - 110, SCREEN_HEIGHT//2 - 70, 220, 60), 2, 10)
+		
+		# Draw and handle input field
+		room_input.draw(screen)
+		
+		# Draw buttons
+		play_button_pressed = create_room_button.draw()
+		generate_button_pressed = join_room_button.draw()
+		back_button_pressed = back_button.draw()
+		
+		# Draw button texts
+		draw_text("Play", font_online, BRIGHT_COLOR, create_room_button.rect.centerx - font_online.size("Play")[0]//2, create_room_button.rect.centery - font_online.size("Play")[1]//2)
+		draw_text("Generate", font_online, BRIGHT_COLOR, join_room_button.rect.centerx - font_online.size("Generate")[0]//2, join_room_button.rect.centery - font_online.size("Generate")[1]//2)
+		draw_text("Back", font_online, BRIGHT_COLOR, back_button.rect.centerx - font_online.size("Back")[0]//2, back_button.rect.centery - font_online.size("Back")[1]//2)
+		
+		# Draw error message if any
+		if online_error_message:
+			draw_text(online_error_message, font_online, (255, 50, 50), SCREEN_WIDTH//2 - font_online.size(online_error_message)[0]//2, SCREEN_HEIGHT//2 + 150)
+		
+		# Handle button clicks
+		if play_button_pressed:
+			# Require a room code
+			if not room_input.text:
+				online_error_message = "Please enter a room code or use Generate"
+			else:
+				# Reset game states for a fresh game
+				end_state = False
+				player_height = 0
+				camera_shift = 0
+				online_win = False
+				
+				# Reset start button state for next game
+				start_button.clicked = False
+				start_button.animation_complete = False
+				
+				online_room_code = room_input.text
+				online_status_message = "Connecting to room..."
+				online_error_message = ""
+				
+				# Define the player data callback
+				def get_player_data():
+					return {"score": player_height, "alive": end_state == False}
+				
+				# Connect to server
+				connection_result = online_client.connect(online_room_code, get_player_data)
+				if connection_result == True:
+					current_game_state = GAME_STATE_ONLINE_WAITING
+				elif connection_result == False and online_client.connection_error:
+					# Transition to connection error screen if there's a specific error
+					current_game_state = GAME_STATE_CONNECTION_ERROR
+				else:
+					# Just show error message for minor issues
+					online_error_message = "Connection failed. Try again."
+		
+		elif generate_button_pressed:
+			# Generate a random room code
+			room_input.text = str(random.randint(10000, 99999))
+			room_input.txt_surface = room_input.font.render(room_input.text, True, room_input.text_color)
+			online_error_message = "Room code generated! Press Play to connect."
+		
+		elif back_button_pressed:
+			# Return to home screen
+			online_mode = False
+			current_game_state = GAME_STATE_HOME
+	
+	elif current_game_state == GAME_STATE_ONLINE_WAITING:
+		# Draw background
+		background_offset += 0.5  # Slow background movement
+		clouds_offset += 0.2  # Even slower clouds movement for parallax effect
+		if background_offset >= 600:
+			background_offset = 0
+		if clouds_offset >= 600:
+			clouds_offset = 0
+		draw_bg(background_offset, clouds_offset)
+		
+		# Check if opponent has joined - this now relies on server's OPPONENT_JOINED message
+		opponent_joined = online_client.has_opponent_joined()
+		
+		# Draw screen title based on opponent status
+		if opponent_joined:
+			title_text = "OPPONENT JOINED"
+			draw_text(title_text, font_big, (50, 255, 50), SCREEN_WIDTH//2 - font_big.size(title_text)[0]//2, SCREEN_HEIGHT//2 - 100)
+			
+			# Draw start button when opponent has joined
+			start_button.update_scale(1.0)
+			start_button.rect.centerx = SCREEN_WIDTH // 2
+			start_button.rect.y = SCREEN_HEIGHT//2 - 20
+			start_game_pressed = start_button.draw()
+			
+			ready_text = "Both players ready! Hit START to begin"
+			draw_text(ready_text, font_online, BRIGHT_COLOR, SCREEN_WIDTH//2 - font_online.size(ready_text)[0]//2, SCREEN_HEIGHT//2 + 60)
+			
+			# Check if the start button was pressed
+			if start_game_pressed and not online_client.game_started:
+				# Mark this player as ready to start
+				online_client.start_game()
+			
+			# Check if both players are ready to start
+			if online_client.game_started and online_client.is_opponent_ready():
+				# Reset game variables for online play
+				end_state = False
+				player_height = 0
+				camera_shift = 0
+				level_up_played = False
+				new_high_score = False
+				show_instructions = False
+				# Reset hero position
+				hero.hitbox.center = (SCREEN_WIDTH // 2, SCREEN_HEIGHT - 150)
+				hero.move_left = False
+				hero.move_right = False
+				# Reset floors and jets
+				floor_group.empty()
+				jet_group.empty()
+				# Create starting floor
+				floor = Floor(SCREEN_WIDTH // 2 - 50, SCREEN_HEIGHT - 50, 100, False)
+				floor_group.add(floor)
+				# Start game
+				current_game_state = GAME_STATE_ONLINE_PLAYING
+				
+				# If music is enabled, start it
+				if music_on and not pygame.mixer.music.get_busy():
+					try:
+						pygame.mixer.music.play(-1)
+					except:
+						pass
+			
+			# Show appropriate message based on player readiness
+			if online_client.game_started and not online_client.is_opponent_ready():
+				waiting_text = "Waiting for opponent to start..."
+				draw_text(waiting_text, font_online, (255, 255, 0), SCREEN_WIDTH//2 - font_online.size(waiting_text)[0]//2, SCREEN_HEIGHT//2 + 100)
+		else:
+			title_text = "WAITING FOR OPPONENT"
+			draw_text(title_text, font_big, BRIGHT_COLOR, SCREEN_WIDTH//2 - font_big.size(title_text)[0]//2, SCREEN_HEIGHT//2 - 50)
+			
+			# Show waiting message
+			waiting_text = "Share your room code with a friend"
+			draw_text(waiting_text, font_online, BRIGHT_COLOR, SCREEN_WIDTH//2 - font_online.size(waiting_text)[0]//2, SCREEN_HEIGHT//2 + 30)
+		
+		# Draw room code (always visible)
+		room_text = f"Room Code: {online_room_code}"
+		draw_text(room_text, font_online, BRIGHT_COLOR, SCREEN_WIDTH//2 - font_online.size(room_text)[0]//2, SCREEN_HEIGHT//2)
+		
+		# Draw cancel button (always visible)
+		back_button.rect.centerx = SCREEN_WIDTH // 2
+		back_button.rect.y = SCREEN_HEIGHT - 100
+		cancel_button_pressed = back_button.draw()
+		draw_text("Cancel", font_online, BRIGHT_COLOR, back_button.rect.centerx - font_online.size("Cancel")[0]//2, back_button.rect.centery - font_online.size("Cancel")[1]//2)
+		
+		if cancel_button_pressed:
+			# Disconnect from server
+			online_client.disconnect()
+			
+			# Reset start button state for next game
+			start_button.clicked = False
+			start_button.animation_complete = False
+			
+			# Return to setup screen
+			current_game_state = GAME_STATE_ONLINE_SETUP
+	
+	elif current_game_state == GAME_STATE_ONLINE_PLAYING:
+		camera_shift = hero.update()
+
+		#draw background - scrolls with player movement
+		background_offset += camera_shift
+		clouds_offset += camera_shift * 0.4  # Clouds move slower for parallax effect
+		if background_offset >= 600:
+			background_offset = 0
+		if clouds_offset >= 600:
+			clouds_offset = 0
+		draw_bg(background_offset, clouds_offset)
+
+		#generate floors
+		if len(floor_group) < MAX_FLOORS:
+			floor_width = random.randint(40, 60)
+			floor_x = random.randint(0, SCREEN_WIDTH - floor_width)
+			floor_y = floor.rect.y - random.randint(80, 120)
+			floor_variant = random.randint(1, 2)
+			
+			# Enable moving floors at higher heights
+			if floor_variant == 1 and player_height > 500:
+				floor_moves = True
+			else:
+				floor_moves = False
+				
+			floor = Floor(floor_x, floor_y, floor_width, floor_moves)
+			floor_group.add(floor)
+
+		#generate jets every 600 points
+		if player_height % 600 < 6 and len(jet_group) == 0 and player_height>500:
+			jet_x = random.randint(50, SCREEN_WIDTH - 50)
+			jet_y = floor.rect.y - random.randint(40, 60)  # Place between platforms
+			jet = Jet(jet_x, jet_y)
+			jet_group.add(jet)
+
+		#update floors and jets
+		floor_group.update(camera_shift)
+		jet_group.update(camera_shift)
+
+		#increase player height score
+		if camera_shift > 0:
+			player_height += int(camera_shift)
+
+		#draw sprites
+		floor_group.draw(screen)
+		jet_group.draw(screen)
+		hero.draw()
+
+		#draw panel with player and opponent scores
+		# Player score
+		draw_text(' ' + str(int(player_height)), font_big, BRIGHT_COLOR, 10, 5)
+		
+		# Opponent score
+		opponent_score = online_client.get_opponent_score()
+		opponent_score_text = f'Opponent: {opponent_score}'
+		text_width = font_big.size(opponent_score_text)[0]
+		draw_text(opponent_score_text, font_big, BRIGHT_COLOR, SCREEN_WIDTH - text_width - 10, 5)
+		
+		#draw and check buttons
+		# Check for button press/hold
+		hero.move_left = left_button.draw()
+		hero.move_right = right_button.draw()
+		
+		# Check if opponent is still alive
+		if not online_client.is_opponent_alive():
+			# Player wins if opponent falls first
+			online_win = True
+			
+			# Show a win message briefly before disconnecting
+			win_font = pygame.font.Font(None, 48)
+			win_text = "YOU WIN!"
+			draw_text(win_text, win_font, (50, 255, 50), SCREEN_WIDTH//2 - win_font.size(win_text)[0]//2, SCREEN_HEIGHT//2)
+			pygame.display.update()
+			
+			# Brief pause for celebration
+			send_final_status_time = pygame.time.get_ticks()
+			while pygame.time.get_ticks() - send_final_status_time < 800:
+				# Keep updating but don't process other game logic
+				pygame.display.update()
+				clock.tick(FPS)
+				
+			current_game_state = GAME_STATE_ONLINE_RESULT
+			online_client.disconnect()
+
+		#check game over
+		if hero.hitbox.top > SCREEN_HEIGHT:
+			# Set end_state to True, this will update the "alive" status in the next data send
+			end_state = True
+			
+			# Player loses if they fall first
+			online_win = False
+			
+			# Allow time for the final status update to be sent (about 0.5 seconds)
+			# This ensures the opponent gets our "alive: false" status before we disconnect
+			send_final_status_time = pygame.time.get_ticks()
+			while pygame.time.get_ticks() - send_final_status_time < 500:
+				# Keep updating the display but don't process other game logic
+				pygame.display.update()
+				clock.tick(FPS)
+			
+			# Now disconnect and transition to result screen
+			current_game_state = GAME_STATE_ONLINE_RESULT
+			online_client.disconnect()
+			
+			# Fade out music and play game over sound if SFX is enabled
+			try:
+				pygame.mixer.music.fadeout(1000)  # Fade out over 1 second
+				if sfx_on and game_over_effect:
+					game_over_effect.play()  # Play game over sound
+			except:
+				pass
+	
+	elif current_game_state == GAME_STATE_CONNECTION_ERROR:
+		# Draw background for error screen
+		screen.blit(game_over_bg_image, (0, 0))
+		
+		# Draw error title
+		error_title = "CONNECTION ERROR"
+		draw_text(error_title, font_game_over, (255, 100, 100), SCREEN_WIDTH//2 - font_game_over.size(error_title)[0]//2, 150)
+		
+		# Get the actual error message from the client
+		error_message = "Could not connect to server."
+		if online_client.connection_error:
+			if "HTTP 502" in online_client.connection_error:
+				error_message = "Server is currently unavailable (HTTP 502)."
+				error_tip = "The server may be restarting. Please try again in a moment."
+			else:
+				error_message = online_client.connection_error
+				error_tip = "Check your internet connection and try again."
+		
+		# Draw error details - break into multiple lines if long
+		if len(error_message) > 40:
+			# Split long messages
+			lines = [error_message[i:i+40] for i in range(0, len(error_message), 40)]
+			for i, line in enumerate(lines):
+				draw_text(line, font_online, BRIGHT_COLOR, 
+					SCREEN_WIDTH//2 - font_online.size(line)[0]//2, 250 + i * 30)
+			y_offset = len(lines) * 30
+		else:
+			draw_text(error_message, font_online, BRIGHT_COLOR, 
+				SCREEN_WIDTH//2 - font_online.size(error_message)[0]//2, 250)
+			y_offset = 30
+		
+		# Draw tip
+		draw_text(error_tip, font_online, BRIGHT_COLOR, 
+			SCREEN_WIDTH//2 - font_online.size(error_tip)[0]//2, 250 + y_offset + 20)
+		
+		# Draw back to home button
+		main_menu_button.rect.centerx = SCREEN_WIDTH // 2
+		main_menu_button.rect.y = SCREEN_HEIGHT - 150
+		menu_button_pressed = main_menu_button.draw()
+		draw_text("Return to Home", font_online, BRIGHT_COLOR, 
+			main_menu_button.rect.centerx - font_online.size("Return to Home")[0]//2, 
+			main_menu_button.rect.centery - font_online.size("Return to Home")[1]//2)
+		
+		if menu_button_pressed:
+			# Reset client
+			online_client.reset()
+			
+			# Return to home screen
+			online_mode = False
+			current_game_state = GAME_STATE_HOME
+			
+			# Reset home screen animations
+			home_animation_active = True
+			logo_y_pos = -200
+			start_btn_scale = 0.0
+			start_btn_phase = START_BTN_PHASE_HIDDEN
+			music_btn_y_pos = SCREEN_HEIGHT + 100
+			sfx_btn_y_pos = SCREEN_HEIGHT + 100
+			theme_btn_y_pos = SCREEN_HEIGHT + 100
+			online_btn_y_pos = SCREEN_HEIGHT + 100
+			animation_timer = 0
+	
+	elif current_game_state == GAME_STATE_ONLINE_RESULT:
+		# Draw background
+		screen.blit(game_over_bg_image, (0, 0))
+		
+		# Draw result title
+		if online_win:
+			result_text = "YOU WIN!"
+		else:
+			result_text = "YOU LOSE!"
+		
+		draw_text(result_text, font_game_over, BRIGHT_COLOR, SCREEN_WIDTH//2 - font_game_over.size(result_text)[0]//2, 150)
+		
+		# Draw scores
+		player_score_text = f'Your Score: {player_height}'
+		opponent_score = online_client.get_opponent_score()
+		opponent_score_text = f'Opponent Score: {opponent_score}'
+		
+		draw_text(player_score_text, font_big, BRIGHT_COLOR, SCREEN_WIDTH//2 - font_big.size(player_score_text)[0]//2, 250)
+		draw_text(opponent_score_text, font_big, BRIGHT_COLOR, SCREEN_WIDTH//2 - font_big.size(opponent_score_text)[0]//2, 290)
+		
+		# Draw and handle main menu button
+		main_menu_button.rect.centerx = SCREEN_WIDTH // 2
+		main_menu_button.rect.y = SCREEN_HEIGHT - 150
+		menu_button_pressed = main_menu_button.draw()
+		
+		# Add a Play Again button
+		retry_button.rect.centerx = SCREEN_WIDTH // 2
+		retry_button.rect.y = SCREEN_HEIGHT - 220
+		play_again_pressed = retry_button.draw()
+		draw_text("Play Again", font_online, BRIGHT_COLOR, retry_button.rect.centerx - font_online.size("Play Again")[0]//2, retry_button.rect.centery - font_online.size("Play Again")[1]//2)
+		
+		# Handle Play Again button
+		if play_again_pressed:
+			# Reset game state for a new game
+			end_state = False
+			player_height = 0
+			camera_shift = 0
+			online_win = False
+			
+			# Reset button states
+			retry_button.clicked = False
+			retry_button.animation_complete = False
+			start_button.clicked = False
+			start_button.animation_complete = False
+			
+			# Complete reset of online client
+			online_client.reset()
+			
+			# Go back to online setup
+			current_game_state = GAME_STATE_ONLINE_SETUP
+		
+		elif menu_button_pressed:
+			# Return to home screen
+			online_mode = False
+			current_game_state = GAME_STATE_HOME
+			
+			# Reset game outcome variables
+			end_state = False
+			online_win = False
+			player_height = 0
+			camera_shift = 0
+			
+			# Reset button states for future games
+			start_button.clicked = False
+			start_button.animation_complete = False
+			
+			# Complete reset of online client
+			online_client.reset()
+			
+			# Reset home screen animations completely
+			home_animation_active = True
+			logo_y_pos = -200
+			start_btn_scale = 0.0
+			start_btn_phase = START_BTN_PHASE_HIDDEN
+			music_btn_y_pos = SCREEN_HEIGHT + 100
+			sfx_btn_y_pos = SCREEN_HEIGHT + 100
+			theme_btn_y_pos = SCREEN_HEIGHT + 100
+			online_btn_y_pos = SCREEN_HEIGHT + 100
+			animation_timer = 0
+			
+			# Restart music if enabled and not already playing
+			if music_on and not pygame.mixer.music.get_busy():
+				try:
+					pygame.mixer.music.play(-1)
+				except:
+					pass
+	
 	elif current_game_state == GAME_STATE_OVER:
 		# Draw the game over background image
 		screen.blit(game_over_bg_image, (0, 0))
@@ -1148,6 +1664,10 @@ while run:
 	#event handler
 	for event in pygame.event.get():
 		if event.type == pygame.QUIT:
+			# Disconnect from online server if connected
+			if online_client.connected:
+				online_client.disconnect()
+			
 			#update best height
 			if player_height > best_height: 	
 				best_height = player_height
@@ -1166,6 +1686,13 @@ while run:
 					print(f"Could not save score: {e}")
 			run = False
 		
+		# Handle input field events in online setup screen
+		if current_game_state == GAME_STATE_ONLINE_SETUP:
+			room_code_result = room_input.handle_event(event)
+			if room_code_result is not None:
+				# Enter key was pressed
+				online_room_code = room_code_result
+			
 		# Handle touch events for buttons
 		if event.type in (pygame.FINGERDOWN, pygame.FINGERMOTION, pygame.FINGERUP):
 			if left_button.check_finger_event(event):
