@@ -41,12 +41,6 @@ Fully AI generated using prompt engineering in Cursor.
 * Double-click the file to launch the game.
 * No installation or Python required.
 
-### Using exe from dist.zip
-
-1. Download the dist.zip file from [release](https://github.com/prashantzzz/Hop.It/releases/tag/Hop.It)
-2. Unzip it then go to dist/main/main.exe
-3. Run the .exe file
-
 ### Run from Source
 
 1. Clone or download this repository.
@@ -61,14 +55,8 @@ Fully AI generated using prompt engineering in Cursor.
    python main.py
    ```
 
-4. Run directly in browser:
-   ```bash
-   python -m pygbag .
-   ```
 
-## How To Play (3 ways)
-
-### [Try it on itch.io](https://prashantzz.itch.io/hopit) - Requires reload after game ends
+### [Try it on itch.io](https://prashantzz.itch.io/hopit) - Doesn't support online mode
 ⚠️ Note: The itch.io version supports only the single-player mode. To experience the 1v1 online multiplayer mode, use the standalone `.exe` version.
 
 ## Game Controls
