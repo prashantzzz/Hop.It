@@ -34,15 +34,16 @@ Fully AI generated using prompt engineering in Cursor and ChatGPT. Suno AI for b
 
 ## Installation Instructions
 
-### 🎓 Run the Standalone .exe (Best & Simplest Way)
+### Run the Standalone .exe (Simplest Way)
 
 * Download the `.exe` directly:
    * [Hop.It.exe (GitHub Release)](https://github.com/prashantzzz/Hop.It/releases/download/Hop.It/Hop.It.exe)
-   * [Google Drive Mirror](https://github.com/prashantzzz/Hop.It/releases/tag/Hop.It)
 * Double-click the file to launch the game.
+  * ⚠️ Note: You may need to bypass the windows security warning to run the game.
+  * If red window appears, click "More info" and then "Run anyway".
 * No installation or Python required.
 
-### Run from Source
+### Or Run from Source
 
 1. Clone or download this repository.
 
