@@ -19,6 +19,7 @@ Fully AI generated using prompt engineering in Cursor and ChatGPT. Suno AI for b
 * AI-generated visuals and gameplay concepts
 * Real-time online 1v1 mode with WebSocket support
 * Jetpack power-up for upward boosts
+* Moving platform on higher floors for increased difficulty
 * Auto-jumping mechanic
 * Animated characters and cartoon-style design
 
@@ -72,8 +73,6 @@ Fully AI generated using prompt engineering in Cursor and ChatGPT. Suno AI for b
 - The objective is to climb as high as possible without falling
 - Score increases based on height reached
 - The game ends if the player falls below the bottom of the screen
-- **Single Player Mode**: Play the game solo and try to beat your high score
-- **Online multiplayer mode**: Compete against another player in real-time to see who can reach the highest score
 
 ### Direction to play 1V1
 - Click Online button on the home screen
@@ -108,7 +107,7 @@ Fully AI generated using prompt engineering in Cursor and ChatGPT. Suno AI for b
 - High score is displayed at the top right of the screen
 
 ## Game Modes
-- **Single Player**: Jump as high as possible
+- **Single Player**: Jump as high as possible and beat your own high score
 - **Online 1v1**: Compete in real-time; whoever reaches higher and survives longer wins
 
 ## Technical Details
@@ -161,7 +160,7 @@ Fully AI generated using prompt engineering in Cursor and ChatGPT. Suno AI for b
 * Background music and SFX: Royalty-free / AI-generated
 
 ## Additional Resources
-* [Video Walkthrough](https://github.com/prashantzzz/Hop.It/blob/main/Hop.It.mp4)
+* [Hosted backend repo](https://github.com/prashantzzz/Hop.It-Server)
 * [AI Prompt Log (GamePrompt.docx)](https://github.com/prashantzzz/Hop.It/blob/main/GamePrompt.docx)
 
 ## Future Improvements
