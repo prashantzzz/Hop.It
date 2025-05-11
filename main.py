@@ -119,7 +119,7 @@ online_room_code = ""
 online_client = OnlineClient()
 online_win = False
 online_draw = False  # New variable to track draw condition
-online_status_message = "Enter a room code or create a new room"
+online_status_message = "Join or create a room"
 online_error_message = ""
 
 # Debug message system for showing WebSocket errors on screen
@@ -1170,7 +1170,7 @@ while run:
 		if create_room_button.animation_complete and create_room_button.clicked:
 			# Require a room code
 			if not room_input.text:
-				online_error_message = "Please enter a room code or use Generate"
+				online_error_message = "Enter a room code or generate it"
 			else:
 				# Reset game states for a fresh game
 				end_state = False
@@ -1190,23 +1190,33 @@ while run:
 				def get_player_data():
 					return {"score": player_height, "alive": end_state == False}
 				
-				# Connect to server
-				connection_result = online_client.connect(online_room_code, get_player_data)
-				if connection_result == True:
-					current_game_state = GAME_STATE_ONLINE_WAITING
-				elif connection_result == False and online_client.room_full:
-					# Show room full error message
-					online_error_message = "Room is full! Try another room code."
-				elif connection_result == False and online_client.connection_error:
-					if "timed out" in online_client.connection_error.lower():
-						# For timeout errors, just show error message on the current screen
-						online_error_message = "Server error occurred, Retry"
+				# Connect to server - use a non-blocking approach
+				try:
+					connection_result = online_client.connect(online_room_code, get_player_data)
+					if connection_result == True:
+						current_game_state = GAME_STATE_ONLINE_WAITING
+					elif connection_result == False and online_client.room_full:
+						# Show room full error message
+						online_error_message = "Room is full! Try another room code."
+					elif connection_result == False and online_client.connection_error:
+						# Handle all connection errors the same way - keep the app responsive
+						if "timed out" in online_client.connection_error.lower():
+							online_error_message = "Connection timed out. Please try again."
+						else:
+							online_error_message = f"Connection error: {online_client.connection_error}"
+						
+						# Ensure client is properly disconnected to prevent hanging connections
+						online_client.disconnect()
 					else:
-						# Transition to connection error screen for other errors
-						current_game_state = GAME_STATE_CONNECTION_ERROR
-				else:
-					# Just show error message for minor issues
-					online_error_message = "Connection failed. Try again."
+						# Just show error message for minor issues
+						online_error_message = "Connection failed. Try again."
+						# Ensure client is properly disconnected
+						online_client.disconnect()
+				except Exception as e:
+					# Catch any other exceptions that might occur
+					online_error_message = f"Unexpected error: {str(e)}"
+					# Always ensure the client is disconnected if an error occurs
+					online_client.disconnect()
 				
 				# Reset button state after action
 				create_room_button.clicked = False
@@ -1233,11 +1243,17 @@ while run:
 			back_button.click_animation = True
 			back_button.click_timer = 0
 			back_button.animation_complete = False  # Reset animation complete flag
+			online_client.disconnect()
+			online_status_message = "Play again?"  # Reset the message
+			online_error_message = ""
+			current_game_state = GAME_STATE_HOME
 			
 		# Check if back button animation is complete before executing action
 		if back_button.animation_complete and back_button.clicked:
 			# Return to home screen
 			online_mode = False
+			online_status_message = "Play again?"
+			online_error_message = ""
 			current_game_state = GAME_STATE_HOME
 			# Reset button state after action
 			back_button.clicked = False
@@ -1460,13 +1476,44 @@ while run:
 			
 			# Brief pause for celebration or acknowledgment
 			send_final_status_time = pygame.time.get_ticks()
-			while pygame.time.get_ticks() - send_final_status_time < 800:
+			
+			# Use a shorter timeout to prevent hanging
+			while pygame.time.get_ticks() - send_final_status_time < 500:
 				# Keep updating but don't process other game logic
 				pygame.display.update()
 				clock.tick(FPS)
 				
+				# Process events to keep window responsive
+				for event in pygame.event.get():
+					if event.type == pygame.QUIT:
+						run = False
+				
+			# Store opponent score before disconnecting
+			final_opponent_score = online_client.get_opponent_score()
+			
+			# First change state, then disconnect
 			current_game_state = GAME_STATE_ONLINE_RESULT
-			online_client.disconnect()
+			
+			# Handle disconnect the same for both winner and loser
+			try:
+				# Store the opponent score for the result screen
+				final_opponent_score = online_client.get_opponent_score()
+				
+				# First disconnect from server
+				online_client.disconnect()
+				
+				# Explicitly preserve score after disconnect for result screen
+				online_client.opponent_data["score"] = final_opponent_score
+				
+				# Fade out music and play game over sound if SFX is enabled
+				try:
+					pygame.mixer.music.fadeout(1000)  # Fade out over 1 second
+					if sfx_on and game_over_effect:
+						game_over_effect.play()  # Play game over sound
+				except Exception:
+					pass
+			except Exception as e:
+				print(f"Error during disconnect: {e}")
 
 		#check game over
 		if hero.hitbox.top > SCREEN_HEIGHT:
@@ -1476,30 +1523,47 @@ while run:
 			# Player loses if they fall first
 			online_win = False
 			
-			# Allow time for the final status update to be sent (about 0.5 seconds)
+			# Allow time for the final status update to be sent (shorter time to prevent hanging)
 			# This ensures the opponent gets our "alive: false" status before we disconnect
 			send_final_status_time = pygame.time.get_ticks()
-			while pygame.time.get_ticks() - send_final_status_time < 500:
+			while pygame.time.get_ticks() - send_final_status_time < 300:  # Shorter timeout
 				# Keep updating the display but don't process other game logic
 				pygame.display.update()
 				clock.tick(FPS)
+				
+				# Process events to keep window responsive
+				for event in pygame.event.get():
+					if event.type == pygame.QUIT:
+						run = False
 			
 			# Store opponent score before disconnecting
-			final_opponent_score = online_client.get_opponent_score()
+			try:
+				final_opponent_score = online_client.get_opponent_score()
+			except Exception as e:
+				print(f"Error getting opponent score: {e}")
+				final_opponent_score = 0
 			
-			# Now disconnect and transition to result screen
+			# First change state, then disconnect in a non-blocking way
 			current_game_state = GAME_STATE_ONLINE_RESULT
-			online_client.disconnect()
 			
-			# Restore opponent score after disconnect
-			online_client.opponent_data["score"] = final_opponent_score
+			try:
+				# Store the opponent score for display
+				final_opponent_score = online_client.get_opponent_score()
+				
+				# Disconnect from server
+				online_client.disconnect()
+				
+				# Directly set score as a safety measure
+				online_client.opponent_data["score"] = final_opponent_score
+			except Exception as e:
+				print(f"Error during disconnect: {e}")
 			
 			# Fade out music and play game over sound if SFX is enabled
 			try:
 				pygame.mixer.music.fadeout(1000)  # Fade out over 1 second
 				if sfx_on and game_over_effect:
 					game_over_effect.play()  # Play game over sound
-			except:
+			except Exception:
 				pass
 	
 	elif current_game_state == GAME_STATE_CONNECTION_ERROR:
@@ -1591,15 +1655,15 @@ while run:
 		draw_text(player_score_text, font_big, BRIGHT_COLOR, SCREEN_WIDTH//2 - font_big.size(player_score_text)[0]//2, 250)
 		draw_text(opponent_score_text, font_big, BRIGHT_COLOR, SCREEN_WIDTH//2 - font_big.size(opponent_score_text)[0]//2, 290)
 		
-		# Draw and handle main menu button
+		# Draw and handle main menu button - moved lower to avoid overlap with scores
 		main_menu_button.rect.centerx = SCREEN_WIDTH // 2
-		main_menu_button.rect.y = SCREEN_HEIGHT - 150
+		main_menu_button.rect.y = SCREEN_HEIGHT - 100  # Moved from -150 to -100
 		main_menu_button.image = main_menu_btn_image
 		menu_button_pressed = main_menu_button.draw()
 		
-		# Add a Play Again button
+		# Add a Play Again button - moved lower to avoid overlap with scores
 		retry_button.rect.centerx = SCREEN_WIDTH // 2
-		retry_button.rect.y = SCREEN_HEIGHT - 220
+		retry_button.rect.y = SCREEN_HEIGHT - 180  # Moved from -220 to -180
 		retry_button.image = retry_btn_image
 		play_again_pressed = retry_button.draw()
 		
@@ -1618,8 +1682,18 @@ while run:
 			start_button.clicked = False
 			start_button.animation_complete = False
 			
-			# Complete reset of online client
-			online_client.reset()
+			# Reset the client safely, trying to preserve score if method supports it
+			try:
+				# Try with parameter first
+				online_client.reset(preserve_opponent_score=True)
+			except TypeError:
+				# Fall back to regular reset if parameter not supported
+				online_client.reset()
+				# Manually preserve score if needed
+				try:
+					online_client.opponent_data["score"] = opponent_score
+				except Exception:
+					pass
 			
 			# Go back to online setup
 			current_game_state = GAME_STATE_ONLINE_SETUP
@@ -1640,8 +1714,12 @@ while run:
 			start_button.clicked = False
 			start_button.animation_complete = False
 			
-			# Complete reset of online client
-			online_client.reset()
+			# Complete reset of online client (don't need to pass any parameters here)
+			try:
+				online_client.reset()
+			except TypeError:
+				# Fallback in case reset() doesn't have the preserve_opponent_score parameter
+				online_client.reset()
 			
 			# Reset home screen animations completely
 			home_animation_active = True

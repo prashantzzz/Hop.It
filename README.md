@@ -12,6 +12,10 @@ Have a score boost by using the Jetpack tht appears occasionally.
 
 - Python 3.x
 - Pygame library (`pip install pygame`)
+- For online multiplayer: `websockets` and `asyncio` libraries
+  ```bash
+  pip install websockets
+  ```
 
 ## How To Play (3 ways)
 ### [Try it here](https://prashantzz.itch.io/hopit) - Requires reload after game ends
@@ -46,6 +50,7 @@ Have a score boost by using the Jetpack tht appears occasionally.
 - **Left Arrow**: Move left
 - **Right Arrow**: Move right
 - **Space**: Restart game after Game Over
+- **Online Mode Controls**: Use mouse to navigate menus, create/join rooms, and start games
 
 ## Game Mechanics
 
@@ -54,6 +59,7 @@ Have a score boost by using the Jetpack tht appears occasionally.
 - The objective is to climb as high as possible without falling
 - Score increases based on height reached
 - The game ends if the player falls below the bottom of the screen
+- **Online multiplayer mode**: Compete against another player in real-time to see who can reach the highest score
 
 ### Platform & Jetpack Mechanics
 - Regular platforms are stationary
@@ -90,10 +96,32 @@ Have a score boost by using the Jetpack tht appears occasionally.
   - `jump1.png`, `jump2.png`, `jump3.png`, `jet.png`, `jet-char.png`, `platform.png`, `bg.png`, `over.png`
   - `jump.wav`, `level-up.mp3`, `over.mp3`, `bg-music.mp3`
 
+## Online Multiplayer
+
+### Features
+- Real-time multiplayer through WebSocket connections
+- Create your own room or join an existing one using a room code
+- See opponent's score in real-time during gameplay
+- Win/lose detection based on height and player status
+- Clean disconnection handling
+
+### How to Play Online
+1. Click the "Online" button on the home screen
+2. Create a new room or enter an existing room code
+3. Wait for an opponent to join (if creating a room) or connect to an existing room
+4. Press "Start" when both players are ready
+5. Compete to reach the highest score - if you fall, you'll immediately see if you've won or lost!
+
+### Technical Details
+- Uses a WebSocket server hosted at wss://hop-it-server.onrender.com
+- Real-time data synchronization between players
+- Proper error handling for connection issues
+
 ## Future Improvements
 
 - Additional platform types with special effects
 - More power-ups and collectibles
 - Multiple character options
 - Difficulty settings
+- Additional online game modes and features
  
