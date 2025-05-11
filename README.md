@@ -3,7 +3,7 @@
 **Game Title**: Hop.It
 
 **Description**: A vertical platformer game where players jump on platforms to reach higher and score more points. Features both single-player and real-time 1v1 online multiplayer mode. Test your reflexes and timing as you beat the high score or defeat your opponent in an intense vertical climb.
-
+Catch the Jetpack on higher floors to get a temporary boost and cross a few platforms (see below attached gif).
 **Theme**: Fast-paced reflex platformer
 
 Fully AI generated using prompt engineering in Cursor.
