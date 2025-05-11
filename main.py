@@ -118,6 +118,7 @@ online_mode = False
 online_room_code = ""
 online_client = OnlineClient()
 online_win = False
+online_draw = False  # New variable to track draw condition
 online_status_message = "Enter a room code or create a new room"
 online_error_message = ""
 
@@ -295,13 +296,15 @@ def draw_debug_messages():
 
 #button class
 class Button():
-	def __init__(self, x, y, image, scale, alt_image=None, no_animation=False):
+	def __init__(self, x, y, image, scale=1, alt_image=None, no_animation=False):
 		width = image.get_width()
 		height = image.get_height()
 		self.original_width = width
 		self.original_height = height
 		self.original_image = image
 		self.alt_image = alt_image
+		# Store the initial scale as a permanent reference that never changes
+		self.base_scale = scale  # This never changes - the true original scale
 		self.current_scale = scale
 		self.image = pygame.transform.scale(image, (int(width * scale), int(height * scale)))
 		self.rect = self.image.get_rect()
@@ -315,7 +318,6 @@ class Button():
 		
 		# Click animation properties
 		self.click_animation = False
-		self.click_scale = scale
 		self.click_timer = 0
 		self.click_duration = 6  # Reduced frames for faster, more responsive animation
 		self.animation_complete = False  # Flag to track when animation is complete
@@ -368,19 +370,20 @@ class Button():
 				# First phase: shrink more dramatically
 				if self.click_timer <= self.click_duration // 2:
 					# Shrink to 70% of original scale for more noticeable effect
-					scale_factor = self.click_scale * (1.0 - 0.3 * (self.click_timer / (self.click_duration // 2)))
+					scale_factor = self.base_scale * (1.0 - 0.3 * (self.click_timer / (self.click_duration // 2)))
 					self.update_scale(scale_factor)
 				# Second phase: expand back with slight bounce
 				elif self.click_timer <= self.click_duration:
 					# Expand back to original scale with slight overshoot
 					progress = (self.click_timer - self.click_duration // 2) / (self.click_duration // 2)
-					scale_factor = self.click_scale * (0.7 + 0.35 * progress)  # Slightly overshoot for bounce effect
+					scale_factor = self.base_scale * (0.7 + 0.35 * progress)  # Slightly overshoot for bounce effect
 					self.update_scale(scale_factor)
 				else:
 					# Animation complete
 					self.click_animation = False
 					self.animation_complete = True  # Set flag when animation is complete
-					self.update_scale(self.click_scale)
+					# Always reset to the original scale when animation completes
+					self.update_scale(self.base_scale)
 			# For no_animation buttons, just set animation complete immediately
 			elif self.click_animation and hasattr(self, 'no_animation') and self.no_animation:
 				self.click_animation = False
@@ -409,7 +412,6 @@ class Button():
 				# Start click animation for touch events
 				self.click_animation = True
 				self.click_timer = 0
-				self.click_scale = self.current_scale
 				return True
 				
 		elif event.type == pygame.FINGERMOTION:
@@ -718,11 +720,12 @@ game_over_animation_delay = [30, 45]  # Separate delays for each button [retry, 
 music_button.set_image(not music_on)
 sfx_button.set_image(not sfx_on)
 
-# Create online screen buttons and input field
+# Create online screen buttons and input field with their proper images
 room_input = InputField(SCREEN_WIDTH//2 - 100, SCREEN_HEIGHT//2 - 60, 200, 40, font_online)
-create_room_button = Button(SCREEN_WIDTH//2 - 120, SCREEN_HEIGHT//2 + 10, theme_btn_image, 1.0)
-join_room_button = Button(SCREEN_WIDTH//2 + 20, SCREEN_HEIGHT//2 + 10, theme_btn_image, 1.0)
-back_button = Button(SCREEN_WIDTH//2 - 50, SCREEN_HEIGHT//2 + 80, theme_btn_image, 1.0)
+create_room_button = Button(SCREEN_WIDTH//2 - 120, SCREEN_HEIGHT//2 + 10, join_btn_image, 1.0)
+join_room_button = Button(SCREEN_WIDTH//2 + 20, SCREEN_HEIGHT//2 + 10, generate_btn_image, 1.0)
+back_button = Button(SCREEN_WIDTH//2 - 50, SCREEN_HEIGHT//2 + 80, back_btn_image, 1.0)
+cancel_button = Button(SCREEN_WIDTH//2 - 50, SCREEN_HEIGHT - 100, cancel_btn_image, 1.0)  # Add dedicated cancel button
 
 #create starting floor
 floor = Floor(SCREEN_WIDTH // 2 - 50, SCREEN_HEIGHT - 50, 100, False)
@@ -1150,11 +1153,6 @@ while run:
 		generate_button_pressed = join_room_button.draw()
 		back_button_pressed = back_button.draw()
 		
-		# Use button images instead of text
-		create_room_button.image = join_btn_image
-		join_room_button.image = generate_btn_image
-		back_button.image = back_btn_image
-		
 		# Draw error message if any
 		if online_error_message:
 			# Use the selected theme color for the message
@@ -1166,7 +1164,6 @@ while run:
 			create_room_button.clicked = True
 			create_room_button.click_animation = True
 			create_room_button.click_timer = 0
-			create_room_button.click_scale = create_room_button.current_scale
 			create_room_button.animation_complete = False  # Reset animation complete flag
 			
 		# Check if join button animation is complete before executing action
@@ -1219,7 +1216,6 @@ while run:
 			join_room_button.clicked = True
 			join_room_button.click_animation = True
 			join_room_button.click_timer = 0
-			join_room_button.click_scale = join_room_button.current_scale
 			join_room_button.animation_complete = False  # Reset animation complete flag
 			
 		# Check if generate button animation is complete before executing action
@@ -1236,7 +1232,6 @@ while run:
 			back_button.clicked = True
 			back_button.click_animation = True
 			back_button.click_timer = 0
-			back_button.click_scale = back_button.current_scale
 			back_button.animation_complete = False  # Reset animation complete flag
 			
 		# Check if back button animation is complete before executing action
@@ -1325,21 +1320,18 @@ while run:
 		draw_text(room_text, font_online, BRIGHT_COLOR, SCREEN_WIDTH//2 - font_online.size(room_text)[0]//2, SCREEN_HEIGHT//2 + 160)
 		
 		# Draw cancel button (always visible)
-		back_button.rect.centerx = SCREEN_WIDTH // 2
-		back_button.rect.y = SCREEN_HEIGHT - 100
-		back_button.image = cancel_btn_image
-		cancel_button_pressed = back_button.draw()
+		cancel_button.rect.centerx = SCREEN_WIDTH // 2
+		cancel_button_pressed = cancel_button.draw()
 		
 		if cancel_button_pressed:
 			# Start click animation for the cancel button
-			back_button.clicked = True
-			back_button.click_animation = True
-			back_button.click_timer = 0
-			back_button.click_scale = back_button.current_scale
-			back_button.animation_complete = False  # Reset animation complete flag
+			cancel_button.clicked = True
+			cancel_button.click_animation = True
+			cancel_button.click_timer = 0
+			cancel_button.animation_complete = False  # Reset animation complete flag
 			
 		# Check if cancel button animation is complete before executing action
-		if back_button.animation_complete and back_button.clicked:
+		if cancel_button.animation_complete and cancel_button.clicked:
 			# Disconnect from server
 			online_client.disconnect()
 			
@@ -1351,7 +1343,7 @@ while run:
 			current_game_state = GAME_STATE_ONLINE_SETUP
 			
 			# Reset button state after action
-			back_button.clicked = False
+			cancel_button.clicked = False
 	
 	elif current_game_state == GAME_STATE_ONLINE_PLAYING:
 		camera_shift = hero.update()
@@ -1416,18 +1408,57 @@ while run:
 		hero.move_left = left_button.draw()
 		hero.move_right = right_button.draw()
 		
-		# Check if opponent is still alive
-		if not online_client.is_opponent_alive():
-			# Player wins if opponent falls first
-			online_win = True
+		# Check win/lose conditions
+		# Get the current state of both players
+		player_alive = not end_state
+		opponent_alive = online_client.is_opponent_alive()
+		opponent_score = online_client.get_opponent_score()
+		
+		# Determine game outcome based on test cases provided
+		# - If one player is alive and other has fallen, alive player wins
+		# - If both have fallen, higher score wins
+		# - If both have fallen with equal scores, it's a draw
+		# - If both are alive, game continues
+		
+		# Check if the game should end (at least one player has fallen)
+		if not player_alive or not opponent_alive:
+			# Both players have fallen - compare scores
+			if not player_alive and not opponent_alive:
+				# Compare scores to determine winner
+				if player_height > opponent_score:
+					online_win = True
+					online_draw = False
+					win_text = "YOU WIN!"
+					win_color = (50, 255, 50)  # Green
+				elif player_height < opponent_score:
+					online_win = False
+					online_draw = False
+					win_text = "YOU LOSE!"
+					win_color = (255, 50, 50)  # Red
+				else:  # Equal scores
+					online_win = False
+					online_draw = True
+					win_text = "DRAW!"
+					win_color = (255, 255, 50)  # Yellow
+			# Player is alive but opponent has fallen
+			elif player_alive and not opponent_alive:
+				online_win = True
+				online_draw = False
+				win_text = "YOU WIN!"
+				win_color = (50, 255, 50)  # Green
+			# Player has fallen but opponent is still alive
+			elif not player_alive and opponent_alive:
+				online_win = False
+				online_draw = False
+				win_text = "YOU LOSE!"
+				win_color = (255, 50, 50)  # Red
 			
-			# Show a win message briefly before disconnecting
+			# Show result message briefly before disconnecting
 			win_font = pygame.font.Font(None, 48)
-			win_text = "YOU WIN!"
-			draw_text(win_text, win_font, (50, 255, 50), SCREEN_WIDTH//2 - win_font.size(win_text)[0]//2, SCREEN_HEIGHT//2)
+			draw_text(win_text, win_font, win_color, SCREEN_WIDTH//2 - win_font.size(win_text)[0]//2, SCREEN_HEIGHT//2)
 			pygame.display.update()
 			
-			# Brief pause for celebration
+			# Brief pause for celebration or acknowledgment
 			send_final_status_time = pygame.time.get_ticks()
 			while pygame.time.get_ticks() - send_final_status_time < 800:
 				# Keep updating but don't process other game logic
@@ -1542,10 +1573,15 @@ while run:
 		# Draw result title
 		if online_win:
 			result_text = "YOU WIN!"
+			result_color = (50, 255, 50)  # Green
+		elif online_draw:
+			result_text = "DRAW!"
+			result_color = (255, 255, 50)  # Yellow
 		else:
 			result_text = "YOU LOSE!"
+			result_color = (255, 50, 50)  # Red
 		
-		draw_text(result_text, font_game_over, BRIGHT_COLOR, SCREEN_WIDTH//2 - font_game_over.size(result_text)[0]//2, 150)
+		draw_text(result_text, font_game_over, result_color, SCREEN_WIDTH//2 - font_game_over.size(result_text)[0]//2, 150)
 		
 		# Draw scores
 		player_score_text = f'Your Score: {player_height}'
@@ -1574,6 +1610,7 @@ while run:
 			player_height = 0
 			camera_shift = 0
 			online_win = False
+			online_draw = False
 			
 			# Reset button states
 			retry_button.clicked = False
@@ -1595,6 +1632,7 @@ while run:
 			# Reset game outcome variables
 			end_state = False
 			online_win = False
+			online_draw = False
 			player_height = 0
 			camera_shift = 0
 			
