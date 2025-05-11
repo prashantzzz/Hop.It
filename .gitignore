@@ -12,6 +12,7 @@ build/
 # PyInstaller
 *.manifest
 *.spec
+*.exe
 
 # Environments
 .env
