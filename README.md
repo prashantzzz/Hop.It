@@ -20,7 +20,7 @@ Fully AI generated using prompt engineering in Cursor.
 * Real-time online 1v1 mode with WebSocket support
 * Jetpack power-up for upward boosts
 * Auto-jumping mechanic
-* Animated characters and pixel-art design
+* Animated characters and cartoon-style design
 
 ## Requirements
 
@@ -63,8 +63,7 @@ Fully AI generated using prompt engineering in Cursor.
 
 - **Left Arrow**: Move left
 - **Right Arrow**: Move right
-- **Space**: Restart game after Game Over
-- **Online Mode Controls**: Use mouse to navigate menus, create/join rooms, and start games
+- **Mouse Controls**: Use mouse to navigate menus, create/join rooms, and start games
 
 ## Game Mechanics
 
@@ -73,7 +72,15 @@ Fully AI generated using prompt engineering in Cursor.
 - The objective is to climb as high as possible without falling
 - Score increases based on height reached
 - The game ends if the player falls below the bottom of the screen
+- **Single Player Mode**: Play the game solo and try to beat your high score
 - **Online multiplayer mode**: Compete against another player in real-time to see who can reach the highest score
+
+### Direction to play 1V1
+- Click Online button on the home screen
+- Generate a room code and share it with another player and hit Play
+- The other enters the code in their game and clicks Join and hits Play
+- Once both players are ready, click "Start" to begin the game
+- The player who reaches the highest score without falling wins
 
 ### Platform & Jetpack Mechanics
 - Regular platforms are stationary
@@ -87,7 +94,7 @@ Fully AI generated using prompt engineering in Cursor.
 - Animated character using `jump1.png`, `jump2.png`, `jump3.png`, and `jet-char.png` for jetpack mode
 - Game over screen uses a custom image (`over.png`)
 - Score display at the top left, high score at the top right (always within the window)
-- Simple but effective pixel art design
+- Simple but effective cartoon-style design
 
 ### Audio Features
 - Background music plays during gameplay
