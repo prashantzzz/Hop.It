@@ -22,14 +22,29 @@ class OnlineClient:
         uri = f"wss://hop-it-server.onrender.com/ws/{room_code}"
         print(f"Connecting to {uri}...")
         try:
-            self.websocket = await websockets.connect(uri)
+            # Add timeout to prevent freezing
+            self.websocket = await asyncio.wait_for(
+                websockets.connect(uri),
+                timeout=5.0  # 5 second timeout for connection
+            )
             print(f"Connected to room {room_code}, waiting for initial response...")
-            response = await self.websocket.recv()
+            # Add timeout for initial response too
+            response = await asyncio.wait_for(
+                self.websocket.recv(),
+                timeout=5.0  # 5 second timeout for initial response
+            )
             print(f"Received initial response: {response}")
             
             if response == "ROOM_FULL":
                 print("Room is full, cannot join")
                 self.room_full = True
+                self.connection_error = "Room is full"
+                # Send to screen
+                try:
+                    from main import add_debug_message
+                    add_debug_message("Room is full! Try another room code.")
+                except ImportError:
+                    pass  # Handle circular import during startup
                 await self.websocket.close()
                 return False
                 
@@ -56,21 +71,57 @@ class OnlineClient:
             # Specific handling for HTTP status code errors like 502
             status_code = getattr(e, 'status_code', 0)
             if status_code == 502:
+                error_msg = f"Server error: HTTP 502 (server unavailable)"
                 self.connection_error = f"server rejected WebSocket connection: HTTP 502"
                 print(f"Server unavailable (HTTP 502) - possibly restarting")
+                # Send to screen
+                from main import add_debug_message
+                add_debug_message(error_msg)
             else:
+                error_msg = f"Server error: HTTP {status_code}"
                 self.connection_error = f"server rejected WebSocket connection: HTTP {status_code}"
                 print(f"HTTP error connecting to server: {e}")
+                # Send to screen
+                from main import add_debug_message
+                add_debug_message(error_msg)
             return False
             
         except websockets.exceptions.ConnectionClosed as e:
-            self.connection_error = f"Connection closed: {e.reason}"
+            error_msg = f"Connection closed: {e.reason}"
+            self.connection_error = error_msg
             print(f"Connection closed while connecting: {e}")
+            # Send to screen
+            try:
+                from main import add_debug_message
+                add_debug_message(error_msg)
+            except ImportError:
+                pass  # Handle circular import during startup
+            return False
+            
+        except asyncio.TimeoutError:
+            # Specific handling for timeout errors
+            error_msg = "Server error occurred, Retry"
+            self.connection_error = "Connection timed out"
+            print(f"Failed to connect to room: timed out during opening handshake")
+            # Send to screen
+            try:
+                from main import add_debug_message
+                add_debug_message(error_msg)
+            except ImportError:
+                pass  # Handle circular import during startup
             return False
             
         except Exception as e:
+            # Generic error handling
+            error_msg = f"Connection error: {str(e)}"
             self.connection_error = str(e)
             print(f"Failed to connect to room: {e}")
+            # Send to screen
+            try:
+                from main import add_debug_message
+                add_debug_message(error_msg)
+            except ImportError:
+                pass  # Handle circular import during startup
             return False
 
     async def _listen_for_messages(self):
@@ -98,13 +149,28 @@ class OnlineClient:
                     except json.JSONDecodeError as e:
                         print(f"Received non-JSON message: {message}, Error: {e}")
                 except asyncio.TimeoutError:
-                    # This is expected, just a way to check stop_event periodically
+                    # This is expected, just continue
                     continue
                 except websockets.exceptions.ConnectionClosed as e:
-                    print(f"WebSocket connection closed: {e}")
+                    error_msg = f"WebSocket connection closed: {str(e)}"
+                    print(error_msg)
+                    # Send to screen
+                    try:
+                        from main import add_debug_message
+                        add_debug_message(error_msg)
+                    except ImportError:
+                        pass
                     break
-        except Exception as e:
-            print(f"Error in WebSocket listener: {e}")
+                except Exception as e:
+                    error_msg = f"Error in message listener: {str(e)}"
+                    print(error_msg)
+                    # Send to screen
+                    try:
+                        from main import add_debug_message
+                        add_debug_message(error_msg)
+                    except ImportError:
+                        pass
+                    break
         finally:
             print("Message listener stopped")
             self.connected = False
@@ -250,17 +316,9 @@ class OnlineClient:
         
     def has_opponent_joined(self):
         """Check if an opponent has joined the room"""
-        # If we've ever received opponent data, consider them joined
-        if self.opponent_joined:
-            return True
-            
-        # Also check if we received opponent data recently
-        # If we have any non-zero score or specific status from opponent
-        if self.opponent_data.get("score", 0) > 0 or "alive" in self.opponent_data:
-            self.opponent_joined = True
-            return True
-            
-        return False
+        # ONLY return True if the server has sent us the OPPONENT_JOINED message
+        # This is set when we receive that specific message from the server
+        return self.opponent_joined
         
     def start_game(self):
         """Indicate that this player is ready to start the game"""

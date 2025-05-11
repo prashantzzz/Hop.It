@@ -29,6 +29,27 @@ SCREEN_HEIGHT = 600
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 pygame.display.set_caption('Hop.It')
 
+# Load button images
+start_btn_image = pygame.image.load(resource_path('assets/Start.png')).convert_alpha()
+music_btn_image = pygame.image.load(resource_path('assets/Music.png')).convert_alpha()
+music_off_btn_image = pygame.image.load(resource_path('assets/Musicoff.png')).convert_alpha()
+sfx_btn_image = pygame.image.load(resource_path('assets/SFX.png')).convert_alpha()
+sfx_off_btn_image = pygame.image.load(resource_path('assets/SFXoff.png')).convert_alpha()
+theme_btn_image = pygame.image.load(resource_path('assets/Theme.png')).convert_alpha()
+online_btn_image = pygame.image.load(resource_path('assets/online.png')).convert_alpha()
+left_btn_image = pygame.image.load(resource_path('assets/left-btn.png')).convert_alpha()
+right_btn_image = pygame.image.load(resource_path('assets/right-btn.png')).convert_alpha()
+retry_btn_image = pygame.image.load(resource_path('assets/retry.png')).convert_alpha()
+main_menu_btn_image = pygame.image.load(resource_path('assets/main-menu.png')).convert_alpha()
+
+# Load additional button images for online mode
+back_btn_image = pygame.image.load(resource_path('assets/back.png')).convert_alpha()
+cancel_btn_image = pygame.image.load(resource_path('assets/cancel.png')).convert_alpha()
+generate_btn_image = pygame.image.load(resource_path('assets/generate.png')).convert_alpha()
+join_btn_image = pygame.image.load(resource_path('assets/join.png')).convert_alpha()
+
+# Online button image is loaded below with other buttons
+
 #load images
 jump1_sprite = pygame.image.load(resource_path('assets/jump1.png')).convert_alpha()
 jump2_sprite = pygame.image.load(resource_path('assets/jump2.png')).convert_alpha()
@@ -42,10 +63,6 @@ floor_sprite = pygame.image.load(resource_path('assets/platform.png')).convert_a
 game_over_bg_image = pygame.image.load(resource_path('assets/over.png')).convert_alpha()
 game_logo_image = pygame.image.load(resource_path('assets/hop.it.png')).convert_alpha()
 
-#load button images
-left_btn_image = pygame.image.load(resource_path('assets/left-btn.png')).convert_alpha()
-right_btn_image = pygame.image.load(resource_path('assets/right-btn.png')).convert_alpha()
-
 # Load button images for home screen
 start_btn_image = pygame.image.load(resource_path('assets/Start.png')).convert_alpha()
 music_btn_image = pygame.image.load(resource_path('assets/Music.png')).convert_alpha()
@@ -54,11 +71,8 @@ sfx_btn_image = pygame.image.load(resource_path('assets/SFX.png')).convert_alpha
 sfx_off_btn_image = pygame.image.load(resource_path('assets/SFXoff.png')).convert_alpha()
 theme_btn_image = pygame.image.load(resource_path('assets/Theme.png')).convert_alpha()
 
-# Create online button image from theme button by changing color
-online_btn_image = theme_btn_image.copy()
-online_btn_surface = pygame.Surface((online_btn_image.get_width(), online_btn_image.get_height()), pygame.SRCALPHA)
-online_btn_surface.fill((100, 100, 255, 150))  # Blue tint
-online_btn_image.blit(online_btn_surface, (0, 0), special_flags=pygame.BLEND_RGBA_MULT)
+# Load online button image directly from file, like other buttons
+online_btn_image = pygame.image.load(resource_path('assets/online.png')).convert_alpha()
 
 # Load game over screen button images
 retry_btn_image = pygame.image.load(resource_path('assets/retry.png')).convert_alpha()
@@ -107,6 +121,12 @@ online_win = False
 online_status_message = "Enter a room code or create a new room"
 online_error_message = ""
 
+# Debug message system for showing WebSocket errors on screen
+debug_messages = []
+debug_message_timer = 0
+MAX_DEBUG_MESSAGES = 3  # Maximum number of messages to show at once
+DEBUG_MESSAGE_TIMEOUT = 5000  # How long to show each message (milliseconds)
+
 # Font for online UI elements
 font_online = pygame.font.Font(None, 28)
 # Initialize online input field and buttons later
@@ -137,12 +157,13 @@ START_BTN_PHASE_POPPING = 1
 START_BTN_PHASE_OVERSHOOT = 2
 START_BTN_PHASE_SETTLE = 3
 START_BTN_PHASE_DONE = 4
+START_BTN_PHASE_VISIBLE = START_BTN_PHASE_DONE  # Add missing constant, visible state is the same as done state
 start_btn_phase = START_BTN_PHASE_HIDDEN
 
 # Theme settings
 theme_index = 0
 theme_colors = [
-    {'name': 'Theme', 'bg': (6, 56, 107), 'text': (245, 169, 25)},  # Orange (default)
+    {'name': 'THEME', 'bg': (6, 56, 107), 'text': (245, 169, 25)},  # Orange (default)
     {'name': 'Sky', 'bg': (6, 56, 107), 'text': (135, 206, 250)},  # Light Blue
 	{'name': 'Mint', 'bg': (6, 56, 107), 'text': (135, 214, 194)},
 	{'name': 'Lavender', 'bg': (6, 56, 107), 'text': (208, 138, 255)},
@@ -222,7 +243,7 @@ def draw_text(text, font, text_col, x, y, outline_col=(0, 0, 0), use_outline=Tru
 		# Define outline thickness
 		outline_thickness = 1  # Reduced to prevent distortion
 		
-		# Define offset positions for the outline
+		# Define outline offsets
 		offsets = [(-outline_thickness, -outline_thickness),
 				   (-outline_thickness, 0),
 				   (-outline_thickness, outline_thickness),
@@ -240,31 +261,57 @@ def draw_text(text, font, text_col, x, y, outline_col=(0, 0, 0), use_outline=Tru
 		# Finally, draw the main text on top
 		screen.blit(text_surface, text_rect)
 
+# Function to add a debug message to be displayed on screen
+def add_debug_message(message):
+	global debug_messages, debug_message_timer
+	# Add new message to the list
+	debug_messages.append({"text": message, "time": pygame.time.get_ticks()})
+	# Keep only the most recent messages
+	if len(debug_messages) > MAX_DEBUG_MESSAGES:
+		debug_messages.pop(0)
+	# Reset timer
+	debug_message_timer = pygame.time.get_ticks()
+	
+# Function to draw debug messages on screen
+def draw_debug_messages():
+	global debug_messages
+	
+	# Remove expired messages
+	current_time = pygame.time.get_ticks()
+	debug_messages = [msg for msg in debug_messages 
+					if current_time - msg["time"] < DEBUG_MESSAGE_TIMEOUT]
+	
+	# Draw remaining messages
+	for i, msg in enumerate(debug_messages):
+		# Draw with semi-transparent background
+		msg_width = font_online.size(msg["text"])[0] + 20
+		msg_height = 30
+		msg_surface = pygame.Surface((msg_width, msg_height), pygame.SRCALPHA)
+		msg_surface.fill((0, 0, 0, 180))  # Semi-transparent black
+		screen.blit(msg_surface, (10, 10 + i * 35))
+		
+		# Draw text
+		draw_text(msg["text"], font_online, (255, 200, 50), 20, 15 + i * 35, use_outline=False)
+
 #button class
 class Button():
-	def __init__(self, x, y, image, scale, alt_image=None):
+	def __init__(self, x, y, image, scale, alt_image=None, no_animation=False):
 		width = image.get_width()
 		height = image.get_height()
-		self.original_image = image
-		self.alt_image = alt_image  # Alternative image for different states (e.g., on/off)
-		self.current_image = image  # Track which image is currently being used
-		self.original_scale = scale
-		self.current_scale = scale
-		
-		# Scale the image to the specified size
-		new_width = int(width * scale)
-		new_height = int(height * scale)
-		self.image = pygame.transform.scale(image, (new_width, new_height))
-		
-		self.rect = self.image.get_rect()
-		self.rect.topleft = (x, y)
-		self.clicked = False
-		
-		# Store original dimensions for scaling
 		self.original_width = width
 		self.original_height = height
+		self.original_image = image
+		self.alt_image = alt_image
+		self.current_scale = scale
+		self.image = pygame.transform.scale(image, (int(width * scale), int(height * scale)))
+		self.rect = self.image.get_rect()
+		self.rect.x = x
+		self.rect.y = y
+		self.clicked = False
+		self.animation_complete = False
 		self.center_x = x + (width * scale) // 2
 		self.center_y = y + (height * scale) // 2
+		self.no_animation = no_animation  # Flag to disable animations
 		
 		# Click animation properties
 		self.click_animation = False
@@ -314,8 +361,8 @@ class Button():
 	def draw(self):
 		# Only draw if visible
 		if not hasattr(self, 'visible') or self.visible:
-			# Handle click animation if active
-			if self.click_animation:
+			# Handle click animation if active and animations are not disabled
+			if self.click_animation and not hasattr(self, 'no_animation') or not self.no_animation:
 				self.click_timer += 1
 				
 				# First phase: shrink more dramatically
@@ -334,6 +381,10 @@ class Button():
 					self.click_animation = False
 					self.animation_complete = True  # Set flag when animation is complete
 					self.update_scale(self.click_scale)
+			# For no_animation buttons, just set animation complete immediately
+			elif self.click_animation and hasattr(self, 'no_animation') and self.no_animation:
+				self.click_animation = False
+				self.animation_complete = True
 			
 			# Draw button on screen
 			screen.blit(self.image, (self.rect.x, self.rect.y))
@@ -636,7 +687,7 @@ online_button = Button(row_start_x + 3 * (small_btn_width + button_spacing), row
 # Game over screen buttons
 game_over_button_scale = 0.8
 retry_width = 175#retry_btn_image.get_width() * game_over_button_scale
-retry_height = 88#retry_btn_image.get_height() * game_over_button_scale
+retry_height = 80#retry_btn_image.get_height() * game_over_button_scale
 main_menu_width = 175#main_menu_btn_image.get_width() * game_over_button_scale
 main_menu_height = 88#main_menu_btn_image.get_height() * game_over_button_scale
 
@@ -648,10 +699,10 @@ main_menu_y_pos = SCREEN_HEIGHT//2 + main_menu_height//2 + 55  # Position main m
 retry_button = Button(SCREEN_WIDTH//2 - retry_width//2, retry_y_pos, retry_btn_image, 1.0)
 main_menu_button = Button(SCREEN_WIDTH//2 - main_menu_width//2, main_menu_y_pos, main_menu_btn_image, 1.0)
 
-# Initialize online play buttons
-create_room_button = Button(SCREEN_WIDTH//2 - 110, SCREEN_HEIGHT//2, theme_btn_image, 0.8)
-join_room_button = Button(SCREEN_WIDTH//2 + 10, SCREEN_HEIGHT//2, theme_btn_image, 0.8)
-back_button = Button(SCREEN_WIDTH//2 - 50, SCREEN_HEIGHT//2 + 80, theme_btn_image, 0.8)
+# Initialize online play buttons - with no_animation to prevent flickering
+create_room_button = Button(SCREEN_WIDTH//2 - 120, SCREEN_HEIGHT//2, theme_btn_image, 1, no_animation=True)
+join_room_button = Button(SCREEN_WIDTH//2 + 20, SCREEN_HEIGHT//2, theme_btn_image, 1, no_animation=True)
+back_button = Button(SCREEN_WIDTH//2 - 50, SCREEN_HEIGHT//2 + 80, theme_btn_image, 1, no_animation=True)
 
 # Initialize input field for room code
 room_input = InputField(SCREEN_WIDTH//2 - 100, SCREEN_HEIGHT//2 - 50, 200, 32, font_online, (220, 220, 220))
@@ -669,9 +720,9 @@ sfx_button.set_image(not sfx_on)
 
 # Create online screen buttons and input field
 room_input = InputField(SCREEN_WIDTH//2 - 100, SCREEN_HEIGHT//2 - 60, 200, 40, font_online)
-create_room_button = Button(SCREEN_WIDTH//2 - 110, SCREEN_HEIGHT//2 + 10, theme_btn_image, 1.0)
-join_room_button = Button(SCREEN_WIDTH//2 + 10, SCREEN_HEIGHT//2 + 10, theme_btn_image, 1.0)
-back_button = Button(SCREEN_WIDTH//2 - 50, SCREEN_HEIGHT//2 + 80, theme_btn_image, 0.8)
+create_room_button = Button(SCREEN_WIDTH//2 - 120, SCREEN_HEIGHT//2 + 10, theme_btn_image, 1.0)
+join_room_button = Button(SCREEN_WIDTH//2 + 20, SCREEN_HEIGHT//2 + 10, theme_btn_image, 1.0)
+back_button = Button(SCREEN_WIDTH//2 - 50, SCREEN_HEIGHT//2 + 80, theme_btn_image, 1.0)
 
 #create starting floor
 floor = Floor(SCREEN_WIDTH // 2 - 50, SCREEN_HEIGHT - 50, 100, False)
@@ -1099,17 +1150,27 @@ while run:
 		generate_button_pressed = join_room_button.draw()
 		back_button_pressed = back_button.draw()
 		
-		# Draw button texts
-		draw_text("Play", font_online, BRIGHT_COLOR, create_room_button.rect.centerx - font_online.size("Play")[0]//2, create_room_button.rect.centery - font_online.size("Play")[1]//2)
-		draw_text("Generate", font_online, BRIGHT_COLOR, join_room_button.rect.centerx - font_online.size("Generate")[0]//2, join_room_button.rect.centery - font_online.size("Generate")[1]//2)
-		draw_text("Back", font_online, BRIGHT_COLOR, back_button.rect.centerx - font_online.size("Back")[0]//2, back_button.rect.centery - font_online.size("Back")[1]//2)
+		# Use button images instead of text
+		create_room_button.image = join_btn_image
+		join_room_button.image = generate_btn_image
+		back_button.image = back_btn_image
 		
 		# Draw error message if any
 		if online_error_message:
-			draw_text(online_error_message, font_online, (255, 50, 50), SCREEN_WIDTH//2 - font_online.size(online_error_message)[0]//2, SCREEN_HEIGHT//2 + 150)
-		
-		# Handle button clicks
+			# Use the selected theme color for the message
+			draw_text(online_error_message, font_online, BRIGHT_COLOR, SCREEN_WIDTH//2 - font_online.size(online_error_message)[0]//2, SCREEN_HEIGHT//2 + 150)
+			
+		# Handle button animations
 		if play_button_pressed:
+			# Start click animation for the join button
+			create_room_button.clicked = True
+			create_room_button.click_animation = True
+			create_room_button.click_timer = 0
+			create_room_button.click_scale = create_room_button.current_scale
+			create_room_button.animation_complete = False  # Reset animation complete flag
+			
+		# Check if join button animation is complete before executing action
+		if create_room_button.animation_complete and create_room_button.clicked:
 			# Require a room code
 			if not room_input.text:
 				online_error_message = "Please enter a room code or use Generate"
@@ -1136,23 +1197,55 @@ while run:
 				connection_result = online_client.connect(online_room_code, get_player_data)
 				if connection_result == True:
 					current_game_state = GAME_STATE_ONLINE_WAITING
+				elif connection_result == False and online_client.room_full:
+					# Show room full error message
+					online_error_message = "Room is full! Try another room code."
 				elif connection_result == False and online_client.connection_error:
-					# Transition to connection error screen if there's a specific error
-					current_game_state = GAME_STATE_CONNECTION_ERROR
+					if "timed out" in online_client.connection_error.lower():
+						# For timeout errors, just show error message on the current screen
+						online_error_message = "Server error occurred, Retry"
+					else:
+						# Transition to connection error screen for other errors
+						current_game_state = GAME_STATE_CONNECTION_ERROR
 				else:
 					# Just show error message for minor issues
 					online_error_message = "Connection failed. Try again."
+				
+				# Reset button state after action
+				create_room_button.clicked = False
 		
 		elif generate_button_pressed:
+			# Start click animation for the generate button
+			join_room_button.clicked = True
+			join_room_button.click_animation = True
+			join_room_button.click_timer = 0
+			join_room_button.click_scale = join_room_button.current_scale
+			join_room_button.animation_complete = False  # Reset animation complete flag
+			
+		# Check if generate button animation is complete before executing action
+		if join_room_button.animation_complete and join_room_button.clicked:
 			# Generate a random room code
-			room_input.text = str(random.randint(10000, 99999))
+			room_input.text = str(random.randint(1000, 9999))
 			room_input.txt_surface = room_input.font.render(room_input.text, True, room_input.text_color)
-			online_error_message = "Room code generated! Press Play to connect."
+			online_error_message = "Join and share code to connect."
+			# Reset button state after action
+			join_room_button.clicked = False
 		
 		elif back_button_pressed:
+			# Start click animation for the back button
+			back_button.clicked = True
+			back_button.click_animation = True
+			back_button.click_timer = 0
+			back_button.click_scale = back_button.current_scale
+			back_button.animation_complete = False  # Reset animation complete flag
+			
+		# Check if back button animation is complete before executing action
+		if back_button.animation_complete and back_button.clicked:
 			# Return to home screen
 			online_mode = False
 			current_game_state = GAME_STATE_HOME
+			# Reset button state after action
+			back_button.clicked = False
 	
 	elif current_game_state == GAME_STATE_ONLINE_WAITING:
 		# Draw background
@@ -1178,7 +1271,7 @@ while run:
 			start_button.rect.y = SCREEN_HEIGHT//2 - 20
 			start_game_pressed = start_button.draw()
 			
-			ready_text = "Both players ready! Hit START to begin"
+			ready_text = "Once they join, hit START to begin"
 			draw_text(ready_text, font_online, BRIGHT_COLOR, SCREEN_WIDTH//2 - font_online.size(ready_text)[0]//2, SCREEN_HEIGHT//2 + 60)
 			
 			# Check if the start button was pressed
@@ -1227,17 +1320,26 @@ while run:
 			waiting_text = "Share your room code with a friend"
 			draw_text(waiting_text, font_online, BRIGHT_COLOR, SCREEN_WIDTH//2 - font_online.size(waiting_text)[0]//2, SCREEN_HEIGHT//2 + 30)
 		
-		# Draw room code (always visible)
+		# Draw room code (always visible) - moved lower to avoid overlap with start button
 		room_text = f"Room Code: {online_room_code}"
-		draw_text(room_text, font_online, BRIGHT_COLOR, SCREEN_WIDTH//2 - font_online.size(room_text)[0]//2, SCREEN_HEIGHT//2)
+		draw_text(room_text, font_online, BRIGHT_COLOR, SCREEN_WIDTH//2 - font_online.size(room_text)[0]//2, SCREEN_HEIGHT//2 + 160)
 		
 		# Draw cancel button (always visible)
 		back_button.rect.centerx = SCREEN_WIDTH // 2
 		back_button.rect.y = SCREEN_HEIGHT - 100
+		back_button.image = cancel_btn_image
 		cancel_button_pressed = back_button.draw()
-		draw_text("Cancel", font_online, BRIGHT_COLOR, back_button.rect.centerx - font_online.size("Cancel")[0]//2, back_button.rect.centery - font_online.size("Cancel")[1]//2)
 		
 		if cancel_button_pressed:
+			# Start click animation for the cancel button
+			back_button.clicked = True
+			back_button.click_animation = True
+			back_button.click_timer = 0
+			back_button.click_scale = back_button.current_scale
+			back_button.animation_complete = False  # Reset animation complete flag
+			
+		# Check if cancel button animation is complete before executing action
+		if back_button.animation_complete and back_button.clicked:
 			# Disconnect from server
 			online_client.disconnect()
 			
@@ -1247,6 +1349,9 @@ while run:
 			
 			# Return to setup screen
 			current_game_state = GAME_STATE_ONLINE_SETUP
+			
+			# Reset button state after action
+			back_button.clicked = False
 	
 	elif current_game_state == GAME_STATE_ONLINE_PLAYING:
 		camera_shift = hero.update()
@@ -1348,9 +1453,15 @@ while run:
 				pygame.display.update()
 				clock.tick(FPS)
 			
+			# Store opponent score before disconnecting
+			final_opponent_score = online_client.get_opponent_score()
+			
 			# Now disconnect and transition to result screen
 			current_game_state = GAME_STATE_ONLINE_RESULT
 			online_client.disconnect()
+			
+			# Restore opponent score after disconnect
+			online_client.opponent_data["score"] = final_opponent_score
 			
 			# Fade out music and play game over sound if SFX is enabled
 			try:
@@ -1398,12 +1509,14 @@ while run:
 		# Draw back to home button
 		main_menu_button.rect.centerx = SCREEN_WIDTH // 2
 		main_menu_button.rect.y = SCREEN_HEIGHT - 150
+		main_menu_button.image = main_menu_btn_image
 		menu_button_pressed = main_menu_button.draw()
-		draw_text("Return to Home", font_online, BRIGHT_COLOR, 
-			main_menu_button.rect.centerx - font_online.size("Return to Home")[0]//2, 
-			main_menu_button.rect.centery - font_online.size("Return to Home")[1]//2)
 		
 		if menu_button_pressed:
+			# Prevent animation by immediately resetting button state
+			main_menu_button.click_animation = False
+			main_menu_button.clicked = False
+			
 			# Reset client
 			online_client.reset()
 			
@@ -1445,13 +1558,14 @@ while run:
 		# Draw and handle main menu button
 		main_menu_button.rect.centerx = SCREEN_WIDTH // 2
 		main_menu_button.rect.y = SCREEN_HEIGHT - 150
+		main_menu_button.image = main_menu_btn_image
 		menu_button_pressed = main_menu_button.draw()
 		
 		# Add a Play Again button
 		retry_button.rect.centerx = SCREEN_WIDTH // 2
 		retry_button.rect.y = SCREEN_HEIGHT - 220
+		retry_button.image = retry_btn_image
 		play_again_pressed = retry_button.draw()
-		draw_text("Play Again", font_online, BRIGHT_COLOR, retry_button.rect.centerx - font_online.size("Play Again")[0]//2, retry_button.rect.centery - font_online.size("Play Again")[1]//2)
 		
 		# Handle Play Again button
 		if play_again_pressed:
@@ -1700,6 +1814,9 @@ while run:
 			if right_button.check_finger_event(event):
 				hero.move_right = True
 
+	# Draw debug messages on top of everything else
+	draw_debug_messages()
+	
 	#update display window
 	pygame.display.update()
 
