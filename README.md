@@ -6,7 +6,7 @@
 Catch the Jetpack on higher floors to get a temporary boost and cross a few platforms (see below attached gif).
 **Theme**: Fast-paced reflex platformer
 
-Fully AI generated using prompt engineering in Cursor.
+Fully AI generated using prompt engineering in Cursor and ChatGPT. Suno AI for bg music and ElevenLabs for sound effects.
 
 <a href="https://prashantzz.itch.io/hopit">
   <img src="https://github.com/prashantzzz/Hop.It/blob/main/Hop.It.gif?raw=true" alt="Hop It Gameplay" width="400"/>
