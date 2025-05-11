@@ -1644,16 +1644,16 @@ while run:
 		else:
 			result_text = "YOU LOSE!"
 			result_color = (255, 50, 50)  # Red
-		
-		draw_text(result_text, font_game_over, result_color, SCREEN_WIDTH//2 - font_game_over.size(result_text)[0]//2, 150)
+		#def draw_text(text, font, text_col, x, y, outline_col=(0, 0, 0), use_outline=True):
+		draw_text(result_text, font_game_over, result_color, SCREEN_WIDTH//2 - font_game_over.size(result_text)[0]//2, 120)
 		
 		# Draw scores
 		player_score_text = f'Your Score: {player_height}'
 		opponent_score = online_client.get_opponent_score()
 		opponent_score_text = f'Opponent Score: {opponent_score}'
 		
-		draw_text(player_score_text, font_big, BRIGHT_COLOR, SCREEN_WIDTH//2 - font_big.size(player_score_text)[0]//2, 250)
-		draw_text(opponent_score_text, font_big, BRIGHT_COLOR, SCREEN_WIDTH//2 - font_big.size(opponent_score_text)[0]//2, 290)
+		draw_text(player_score_text, font_big, BRIGHT_COLOR, SCREEN_WIDTH//2 - font_big.size(player_score_text)[0]//2, 220)
+		draw_text(opponent_score_text, font_big, BRIGHT_COLOR, SCREEN_WIDTH//2 - font_big.size(opponent_score_text)[0]//2, 260)
 		
 		# Draw and handle main menu button - moved lower to avoid overlap with scores
 		main_menu_button.rect.centerx = SCREEN_WIDTH // 2
@@ -1663,7 +1663,7 @@ while run:
 		
 		# Add a Play Again button - moved lower to avoid overlap with scores
 		retry_button.rect.centerx = SCREEN_WIDTH // 2
-		retry_button.rect.y = SCREEN_HEIGHT - 180  # Moved from -220 to -180
+		retry_button.rect.y = SCREEN_HEIGHT - 160  # Moved from -220 to -180
 		retry_button.image = retry_btn_image
 		play_again_pressed = retry_button.draw()
 		
