@@ -1,12 +1,26 @@
 # Hop.It Game
-Fully AI generated using prompt engineering in Cursor.
-A vertical platformer game where the player jumps on platforms to reach higher and achieve a better score. Test your reflexes and timing as you navigate increasingly difficult platforms, beating the high score each time!
-Have a score boost by using the Jetpack tht appears occasionally.
 
-### Find all the prompts, AI generated content in [GamePrompt.docx](https://github.com/prashantzzz/Hop.It/blob/main/GamePrompt.docx) file, and Video walkthrough [Hopit.mp4](https://github.com/prashantzzz/Hop.It/blob/main/Hop.It.mp4) file in the repository.
+**Game Title**: Hop.It
+
+**Description**: A vertical platformer game where players jump on platforms to reach higher and score more points. Features both single-player and real-time 1v1 online multiplayer mode. Test your reflexes and timing as you beat the high score or defeat your opponent in an intense vertical climb.
+
+**Theme**: Fast-paced reflex platformer
+
+Fully AI generated using prompt engineering in Cursor.
+
 <a href="https://prashantzz.itch.io/hopit">
   <img src="https://github.com/prashantzzz/Hop.It/blob/main/Hop.It.gif?raw=true" alt="Hop It Gameplay" width="400"/>
 </a>
+
+### Find all the prompts, AI generated content in [GamePrompt.docx](https://github.com/prashantzzz/Hop.It/blob/main/GamePrompt.docx) file, and Video walkthrough [Hopit.mp4](https://github.com/prashantzzz/Hop.It/blob/main/Hop.It.mp4) file in the repository.
+
+## Unique Features
+
+* AI-generated visuals and gameplay concepts
+* Real-time online 1v1 mode with WebSocket support
+* Jetpack power-up for upward boosts
+* Auto-jumping mechanic
+* Animated characters and pixel-art design
 
 ## Requirements
 
@@ -17,22 +31,29 @@ Have a score boost by using the Jetpack tht appears occasionally.
   pip install websockets
   ```
 
-## How To Play (3 ways)
-### [Try it here](https://prashantzz.itch.io/hopit) - Requires reload after game ends
+## Installation Instructions
 
-### Using exe to run it as GUI (Best & simple way)
+### 🎓 Run the Standalone .exe (Best & Simplest Way)
 
-1. Download the dist.zip fle from [release](https://github.com/prashantzzz/Hop.It/releases/tag/Hop.It)
+* Download the `.exe` directly:
+   * [Hop.It.exe (GitHub Release)](https://github.com/prashantzzz/Hop.It/releases/download/Hop.It/Hop.It.exe)
+   * [Google Drive Mirror](https://github.com/prashantzzz/Hop.It/releases/tag/Hop.It)
+* Double-click the file to launch the game.
+* No installation or Python required.
+
+### Using exe from dist.zip
+
+1. Download the dist.zip file from [release](https://github.com/prashantzzz/Hop.It/releases/tag/Hop.It)
 2. Unzip it then go to dist/main/main.exe
 3. Run the .exe file
 
-### Cloning
+### Run from Source
 
 1. Clone or download this repository.
 
 2. Install dependencies:
    ```bash
-   pip install pygame pygbag
+   pip install pygame websockets asyncio pygbag
    ```
 
 3. Run the game as GUI using Pygame:
@@ -44,6 +65,11 @@ Have a score boost by using the Jetpack tht appears occasionally.
    ```bash
    python -m pygbag .
    ```
+
+## How To Play (3 ways)
+
+### [Try it on itch.io](https://prashantzz.itch.io/hopit) - Requires reload after game ends
+⚠️ Note: The itch.io version supports only the single-player mode. To experience the 1v1 online multiplayer mode, use the standalone `.exe` version.
 
 ## Game Controls
 
@@ -86,6 +112,10 @@ Have a score boost by using the Jetpack tht appears occasionally.
 - High scores are saved between game sessions in `score.txt`
 - High score is displayed at the top right of the screen
 
+## Game Modes
+- **Single Player**: Jump as high as possible
+- **Online 1v1**: Compete in real-time; whoever reaches higher and survives longer wins
+
 ## Technical Details
 
 - Built with Python and Pygame
@@ -95,6 +125,14 @@ Have a score boost by using the Jetpack tht appears occasionally.
 - For cloning: All assets must be present in the `assets` folder:
   - `jump1.png`, `jump2.png`, `jump3.png`, `jet.png`, `jet-char.png`, `platform.png`, `bg.png`, `over.png`
   - `jump.wav`, `level-up.mp3`, `over.mp3`, `bg-music.mp3`
+
+## Tools and Resources Used
+* Python 3.x
+* Pygame
+* Websockets
+* Asyncio
+* Pygbag
+* Prompt engineering and AI-generation (via Cursor editor)
 
 ## Online Multiplayer
 
@@ -117,6 +155,20 @@ Have a score boost by using the Jetpack tht appears occasionally.
 - Real-time data synchronization between players
 - Proper error handling for connection issues
 
+## Known Limitations
+* Online mode requires stable internet
+* Web version may not support `websockets` (black screen issue)
+* Jetpack power-up triggers only after score threshold
+
+## Licenses and Attributes
+* Game code: MIT License
+* Assets: Created using AI and open-use tools; attribution embedded in GamePrompt.docx
+* Background music and SFX: Royalty-free / AI-generated
+
+## Additional Resources
+* [Video Walkthrough](https://github.com/prashantzzz/Hop.It/blob/main/Hop.It.mp4)
+* [AI Prompt Log (GamePrompt.docx)](https://github.com/prashantzzz/Hop.It/blob/main/GamePrompt.docx)
+
 ## Future Improvements
 
 - Additional platform types with special effects
@@ -124,4 +176,3 @@ Have a score boost by using the Jetpack tht appears occasionally.
 - Multiple character options
 - Difficulty settings
 - Additional online game modes and features
- 
