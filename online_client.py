@@ -1,8 +1,15 @@
-import asyncio
-import websockets
+import sys
 import json
 import threading
 import time
+
+# Detect if running in browser (Pygbag/Emscripten)
+is_browser = sys.platform == "emscripten"
+
+# Only import asyncio and websockets if not in browser
+if not is_browser:
+    import asyncio
+    import websockets
 
 class OnlineClient:
     def __init__(self):
@@ -19,8 +26,17 @@ class OnlineClient:
         self.time_remaining = self.game_time
         self._stop_event = threading.Event()
         self._ws_thread = None
+        
+        # In browser mode, we don't need to do anything else
+        if is_browser:
+            print("Running in browser mode, online features disabled")
 
     async def _connect_to_room(self, room_code):
+        # In browser mode, return False immediately
+        if is_browser:
+            self.connection_error = "Online play is not available in browser mode"
+            return False
+            
         uri = f"wss://hop-it-server.onrender.com/ws/{room_code}"
         print(f"Connecting to {uri}...")
         try:
@@ -197,6 +213,11 @@ class OnlineClient:
             pass
 
     def connect(self, room_code, get_player_data_func):
+        # In browser mode, return False immediately
+        if is_browser:
+            self.connection_error = "Online play not available in browser"
+            return False
+            
         if self._ws_thread and self._ws_thread.is_alive():
             return False
 

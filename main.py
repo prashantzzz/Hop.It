@@ -2,11 +2,25 @@
 import pygame, os, random, sys
 import math
 from input_field import InputField
-from online_client import OnlineClient
+
+# Detect if running in browser (Pygbag/Emscripten)
+is_browser = sys.platform == "emscripten"
+
+# Only import online client if not running in browser
+if not is_browser:
+    from online_client import OnlineClient
 
 # Helper function to handle resource paths for both development and PyInstaller
 def resource_path(relative_path):
-    """ Get absolute path to resource, works for dev and for PyInstaller """
+    """ Get absolute path to resource, works for dev, PyInstaller, and browser """
+    # In browser environment (Pygbag/Emscripten), use a direct path
+    if is_browser:
+        # Remove any duplicate 'assets/' in the path
+        if relative_path.startswith('assets/') and '/assets/assets/' in f'/{relative_path}':
+            relative_path = relative_path[7:]  # Remove the leading 'assets/'
+        return relative_path
+    
+    # For desktop environments
     try:
         # PyInstaller creates a temp folder and stores path in _MEIPASS
         base_path = sys._MEIPASS
@@ -71,8 +85,12 @@ sfx_btn_image = pygame.image.load(resource_path('assets/SFX.png')).convert_alpha
 sfx_off_btn_image = pygame.image.load(resource_path('assets/SFXoff.png')).convert_alpha()
 theme_btn_image = pygame.image.load(resource_path('assets/Theme.png')).convert_alpha()
 
-# Load online button image directly from file, like other buttons
-online_btn_image = pygame.image.load(resource_path('assets/online.png')).convert_alpha()
+# Load online button image only if not in browser
+if not is_browser:
+    online_btn_image = pygame.image.load(resource_path('assets/online.png')).convert_alpha()
+else:
+    # Create a dummy surface for browser mode
+    online_btn_image = pygame.Surface((1, 1), pygame.SRCALPHA)
 
 # Load game over screen button images
 retry_btn_image = pygame.image.load(resource_path('assets/retry.png')).convert_alpha()
@@ -116,7 +134,55 @@ current_game_state = GAME_STATE_HOME
 # Online game variables
 online_mode = False
 online_room_code = ""
-online_client = OnlineClient()
+# Initialize online client only if not in browser
+if not is_browser:
+    online_client = OnlineClient()
+else:
+    # Create a dummy online client for browser mode
+    class DummyOnlineClient:
+        def __init__(self):
+            self.connected = False
+            self.room_full = False
+            self.connection_error = None
+            self.opponent_joined = False
+            self.game_started = False
+            self.opponent_data = {"score": 0, "alive": True, "game_started": False}
+            self.time_remaining = 90
+            
+        def connect(self, *args, **kwargs):
+            return False
+            
+        def disconnect(self):
+            pass
+            
+        def reset(self, **kwargs):
+            pass
+            
+        def has_opponent_joined(self):
+            return False
+            
+        def is_opponent_alive(self):
+            return False
+            
+        def get_opponent_score(self):
+            return 0
+            
+        def start_game(self):
+            pass
+            
+        def is_opponent_ready(self):
+            return False
+            
+        def both_players_ready(self):
+            return False
+            
+        def get_time_remaining(self):
+            return self.time_remaining
+            
+        def get_opponent_time_remaining(self):
+            return self.time_remaining
+    
+    online_client = DummyOnlineClient()
 online_win = False
 online_draw = False  # New variable to track draw condition
 online_status_message = "Join or create a room"
@@ -684,7 +750,13 @@ row_y = SCREEN_HEIGHT * 3//4  # Moved further down
 music_button = Button(row_start_x, row_y, music_btn_image, 1.0, music_off_btn_image)
 sfx_button = Button(row_start_x + small_btn_width + button_spacing, row_y, sfx_btn_image, 1.0, sfx_off_btn_image)
 theme_button = Button(row_start_x + 2 * (small_btn_width + button_spacing), row_y, theme_btn_image, 1.0)
-online_button = Button(row_start_x + 3 * (small_btn_width + button_spacing), row_y, online_btn_image, 1.0)
+# Create online button only if not in browser
+if not is_browser:
+    online_button = Button(row_start_x + 3 * (small_btn_width + button_spacing), row_y, online_btn_image, 1.0)
+else:
+    # Create a dummy button for browser mode that won't be displayed
+    online_button = Button(0, 0, online_btn_image, 0)
+    online_button.visible = False
 
 # Game over screen buttons
 game_over_button_scale = 0.8
@@ -853,7 +925,9 @@ while run:
 		music_button.draw()
 		sfx_button.draw()
 		theme_button.draw()
-		online_button.draw()
+		# Only draw online button if not in browser
+		if not is_browser:
+			online_button.draw()
 		
 		# Draw status indicators below buttons using small bold font
 		music_status = "ON" if music_on else "OFF"
@@ -872,11 +946,12 @@ while run:
 			theme_button.rect.centerx - font_status.size(theme_name)[0]//2, 
 			theme_button.rect.bottom + 10)
 		
-		# Online status indicator
-		online_status = "ONLINE" 
-		draw_text(online_status, font_status, BRIGHT_COLOR, 
-			online_button.rect.centerx - font_status.size(online_status)[0]//2, 
-			online_button.rect.bottom + 10)
+		# Online status indicator - only if not in browser
+		if not is_browser:
+			online_status = "ONLINE" 
+			draw_text(online_status, font_status, BRIGHT_COLOR, 
+				online_button.rect.centerx - font_status.size(online_status)[0]//2, 
+				online_button.rect.bottom + 10)
 		
 		# Draw buttons first
 		start_button.draw()
@@ -991,8 +1066,8 @@ while run:
 			BRIGHT_COLOR = theme_colors[theme_index]['text']
 			UI_COLOR = theme_colors[theme_index]['bg']
 		
-		if online_button.animation_complete and online_button.clicked:
-			# Reset online variables
+		if not is_browser and online_button.animation_complete and online_button.clicked:
+			# Reset online variables (only if not in browser)
 			online_mode = True
 			online_room_code = ""
 			online_input_active = True

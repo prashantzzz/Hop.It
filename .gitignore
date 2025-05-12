@@ -29,19 +29,8 @@ venv.bak/
 *.swo
 .DS_Store
 
-# Pygame specific
-*.mp3
-*.wav
-*.ogg
-*.png
-*.jpg
-*.jpeg
-*.gif
-*.bmp
-!assets/**  # Keep assets directory tracked
 
 # Game specific
-score.txt
 highscore.txt
 *.save
 *.log
