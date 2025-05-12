@@ -8,7 +8,7 @@ Catch the Jetpack on higher floors to get a temporary boost and cross a few plat
 **Theme**: Fast-paced reflex platformer
 
 **Links**: 
-   * [GitHub Zipped File](https://drive.google.com/file/d/1H_VZMBZCf7Mitfg8a5TfqWoEGp_0-9sH/)
+   * [GitHub Zipped File]()
    * [Hop.It.exe (GitHub Release)](https://github.com/prashantzzz/Hop.It/releases/download/Hop.It/Hop.It.exe)
 
 Fully AI generated using prompt engineering in Cursor and ChatGPT. Suno AI for bg music and ElevenLabs for sound effects.
