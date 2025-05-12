@@ -8,7 +8,7 @@ Catch the Jetpack on higher floors to get a temporary boost and cross a few plat
 **Theme**: Fast-paced reflex platformer
 
 **Links**: 
-   * [GitHub Zipped File](https://drive.google.com/file/d/1lOOu1OrVsP75G45jOEAI4bO5hHvzijHV/view?usp=sharing)
+   * [GitHub Zipped File](https://drive.google.com/file/d/1lOOu1OrVsP75G45jOEAI4bO5hHvzijHV/)
    * [Hop.It.exe (GitHub Release)](https://github.com/prashantzzz/Hop.It/releases/download/Hop.It/Hop.It.exe)
 
 Fully AI generated using prompt engineering in Cursor and ChatGPT. Suno AI for bg music and ElevenLabs for sound effects.
@@ -17,7 +17,7 @@ Fully AI generated using prompt engineering in Cursor and ChatGPT. Suno AI for b
   <img src="https://github.com/prashantzzz/Hop.It/blob/main/Hop.It.gif?raw=true" alt="Hop It Gameplay" width="400"/>
 </a>
 
-### Find all the prompts, AI generated content in [GamePrompt.docx](https://github.com/prashantzzz/Hop.It/blob/main/GamePrompt.docx) file, and Video walkthrough [Hopit.mp4](https://github.com/prashantzzz/Hop.It/blob/main/Hop.It.mp4) file in the repository.
+### Find all the prompts, AI generated content and development process in Prompt History folder
 
 ## Unique Features
 
@@ -157,6 +157,7 @@ Fully AI generated using prompt engineering in Cursor and ChatGPT. Suno AI for b
 
 ### Technical Details
 - Uses a WebSocket server hosted at wss://hop-it-server.onrender.com
+- Git repo for server code: [Hop.It-Server](https://github.com/prashantzzz/Hop.It-Server)
 - Real-time data synchronization between players
 - Proper error handling for connection issues
 
