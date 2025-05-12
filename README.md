@@ -121,13 +121,17 @@ Fully AI generated using prompt engineering in Cursor and ChatGPT. Suno AI for b
   - `jump1.png`, `jump2.png`, `jump3.png`, `jet.png`, `jet-char.png`, `platform.png`, `bg.png`, `over.png`
   - `jump.wav`, `level-up.mp3`, `over.mp3`, `bg-music.mp3`
 
-## Tools and Resources Used
+## Tech Stack
 * Python 3.x
 * Pygame
 * Websockets
 * Asyncio
 * Pygbag
-* Prompt engineering and AI-generation (via Cursor editor)
+
+## AI Tools:
+- Cursor AI (Code gen)
+- ChatGPT & Leonardo AI (Game assets & images)
+- SunoAI (Background music)
 
 ## Online Multiplayer
 
