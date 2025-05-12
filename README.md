@@ -145,7 +145,8 @@ Fully AI generated using prompt engineering in Cursor and ChatGPT. Suno AI for b
 - Real-time multiplayer through WebSocket connections
 - Create your own room or join an existing one using a room code
 - See opponent's score in real-time during gameplay
-- Win/lose detection based on height and player status
+- 90-second timer for intense, time-limited matches
+- Win/lose detection based on height, player status, and time limit
 - Clean disconnection handling
 
 ### How to Play Online
@@ -153,7 +154,9 @@ Fully AI generated using prompt engineering in Cursor and ChatGPT. Suno AI for b
 2. Create a new room or enter an existing room code
 3. Wait for an opponent to join (if creating a room) or connect to an existing room
 4. Press "Start" when both players are ready
-5. Compete to reach the highest score - if you fall, you'll immediately see if you've won or lost!
+5. Compete to reach the highest score within the 90-second time limit
+6. The game ends if the timer runs out or if you fall
+7. The player with the highest score wins when time expires or when the opponent falls
 
 ### Technical Details
 - Uses a WebSocket server hosted at wss://hop-it-server.onrender.com
@@ -163,8 +166,10 @@ Fully AI generated using prompt engineering in Cursor and ChatGPT. Suno AI for b
 
 ## Known Limitations
 * Online mode requires stable internet
+* Sometimes when server is down, the window freezes.  In that case, wait and reopen the game.
 * Web version may not support `websockets` (black screen issue)
 * Jetpack power-up triggers only after score threshold
+* Timer starts only when both players click Start
 
 ## Licenses and Attributes
 * Game code: MIT License

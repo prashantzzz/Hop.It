@@ -14,6 +14,9 @@ class OnlineClient:
         self.room_full = False
         self.opponent_joined = False
         self.game_started = False
+        self.game_time = 90  # 1 minute 30 seconds
+        self.game_start_time = 0
+        self.time_remaining = self.game_time
         self._stop_event = threading.Event()
         self._ws_thread = None
 
@@ -157,6 +160,8 @@ class OnlineClient:
                 try:
                     player_data = get_player_data_func()
                     player_data["game_started"] = self.game_started
+                    # We don't need to send game_time and time_remaining as they're not used by the server
+                    # and each client calculates its own timer
                     await self.websocket.send(json.dumps(player_data))
                     await asyncio.sleep(0.1)
                 except websockets.exceptions.ConnectionClosed:
@@ -238,6 +243,8 @@ class OnlineClient:
         self.opponent_data = {"score": 0, "alive": True, "game_started": False}
         self.connection_error = None
         self.room_full = False
+        self.game_start_time = 0
+        self.time_remaining = self.game_time
         self._ws_thread = None
         self._stop_event = threading.Event()
         print("Online client completely reset for new game")
@@ -253,6 +260,25 @@ class OnlineClient:
 
     def start_game(self):
         self.game_started = True
+        # We'll only set the start time when both players are ready
 
     def is_opponent_ready(self):
         return self.opponent_data.get("game_started", False)
+    
+    def both_players_ready(self):
+        return self.game_started and self.is_opponent_ready()
+        
+    def get_time_remaining(self):
+        """Get the remaining time in seconds for the game"""
+        # Initialize the game start time when both players are ready
+        if self.both_players_ready() and self.game_start_time == 0:
+            self.game_start_time = time.time()
+            
+        if self.both_players_ready() and self.game_start_time > 0:
+            elapsed_time = time.time() - self.game_start_time
+            self.time_remaining = max(0, self.game_time - elapsed_time)
+        return self.time_remaining
+        
+    def get_opponent_time_remaining(self):
+        """Get the opponent's remaining time in seconds"""
+        return self.opponent_data.get("time_remaining", self.game_time)

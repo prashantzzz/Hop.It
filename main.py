@@ -61,7 +61,7 @@ base_image = pygame.image.load(resource_path('assets/base.png')).convert_alpha()
 clouds_image = pygame.image.load(resource_path('assets/clouds.png')).convert_alpha()
 floor_sprite = pygame.image.load(resource_path('assets/platform.png')).convert_alpha()
 game_over_bg_image = pygame.image.load(resource_path('assets/over.png')).convert_alpha()
-game_logo_image = pygame.image.load(resource_path('assets/hop.it.png')).convert_alpha()
+game_logo_image = pygame.image.load(resource_path('assets/hop.it2.png')).convert_alpha()
 
 # Load button images for home screen
 start_btn_image = pygame.image.load(resource_path('assets/Start.png')).convert_alpha()
@@ -138,8 +138,8 @@ online_win = False  # True if player won, False if lost
 
 # Animation settings for home screen
 home_animation_active = True
-logo_y_pos = -200  # Start off-screen
-logo_target_y = 50
+logo_y_pos = -350  # Start off-screen
+logo_target_y = -80  # Reduced from 50 to make logo come down less
 start_btn_scale = 0.0  # Start with zero scale (invisible)
 start_btn_target_scale = 0.8  # Target scale for the button
 start_btn_y_pos = SCREEN_HEIGHT//2  # Fixed Y position
@@ -695,11 +695,11 @@ main_menu_height = 88#main_menu_btn_image.get_height() * game_over_button_scale
 
 # Position buttons vertically with spacing
 game_over_button_spacing = 40  # Increased spacing between buttons
-retry_y_pos = SCREEN_HEIGHT//2 - retry_height//2 + 40  # Position retry button above center
-main_menu_y_pos = SCREEN_HEIGHT//2 + main_menu_height//2 + 55  # Position main menu button below center
+retry_y_pos = SCREEN_HEIGHT//2 + 78  # Position retry button lower (moved down by 20 pixels)
+main_menu_y_pos = SCREEN_HEIGHT//2 + 75  # Position main menu button lower (moved down by 20 pixels)
 
-retry_button = Button(SCREEN_WIDTH//2 - retry_width//2, retry_y_pos, retry_btn_image, 1.0)
-main_menu_button = Button(SCREEN_WIDTH//2 - main_menu_width//2, main_menu_y_pos, main_menu_btn_image, 1.0)
+retry_button = Button(SCREEN_WIDTH//2 - 125, retry_y_pos, retry_btn_image, 1.0)
+main_menu_button = Button(SCREEN_WIDTH//2 + 15, main_menu_y_pos, main_menu_btn_image, 1.0)
 
 # Initialize online play buttons - with no_animation to prevent flickering
 create_room_button = Button(SCREEN_WIDTH//2 - 120, SCREEN_HEIGHT//2, theme_btn_image, 1, no_animation=True)
@@ -710,7 +710,7 @@ back_button = Button(SCREEN_WIDTH//2 - 50, SCREEN_HEIGHT//2 + 80, theme_btn_imag
 room_input = InputField(SCREEN_WIDTH//2 - 100, SCREEN_HEIGHT//2 - 50, 200, 32, font_online, (220, 220, 220))
 
 # Game over screen animation variables
-retry_btn_y_pos = SCREEN_HEIGHT + 100  		# Start below screen
+retry_btn_y_pos = SCREEN_HEIGHT + 100  	# Start below screen
 main_menu_btn_y_pos = SCREEN_HEIGHT + 100  # Start below screen
 game_over_animation_active = False
 game_over_animation_timer = 0
@@ -722,9 +722,9 @@ sfx_button.set_image(not sfx_on)
 
 # Create online screen buttons and input field with their proper images
 room_input = InputField(SCREEN_WIDTH//2 - 100, SCREEN_HEIGHT//2 - 60, 200, 40, font_online)
-create_room_button = Button(SCREEN_WIDTH//2 - 120, SCREEN_HEIGHT//2 + 10, join_btn_image, 1.0)
-join_room_button = Button(SCREEN_WIDTH//2 + 20, SCREEN_HEIGHT//2 + 10, generate_btn_image, 1.0)
-back_button = Button(SCREEN_WIDTH//2 - 50, SCREEN_HEIGHT//2 + 80, back_btn_image, 1.0)
+create_room_button = Button(SCREEN_WIDTH//2 - 125, SCREEN_HEIGHT//2 + 10, join_btn_image, 1.0)
+join_room_button = Button(SCREEN_WIDTH//2 + 15, SCREEN_HEIGHT//2 + 10, generate_btn_image, 1.0)
+back_button = Button(SCREEN_WIDTH//2 - 50, SCREEN_HEIGHT//2 + 60, back_btn_image, 1.0)  # Moved up by 30 pixels
 cancel_button = Button(SCREEN_WIDTH//2 - 50, SCREEN_HEIGHT - 100, cancel_btn_image, 1.0)  # Add dedicated cancel button
 
 #create starting floor
@@ -1419,6 +1419,15 @@ while run:
 		text_width = font_big.size(opponent_score_text)[0]
 		draw_text(opponent_score_text, font_big, BRIGHT_COLOR, SCREEN_WIDTH - text_width - 10, 5)
 		
+		# Draw timer only when both players are ready
+		if online_client.both_players_ready():
+			time_remaining = online_client.get_time_remaining()
+			# Display timer in seconds only
+			timer_text = f'{int(time_remaining)}s'
+			timer_width = font_big.size(timer_text)[0]
+			# Position timer more to the left but not extreme left
+			draw_text(timer_text, font_big, (255, 255, 0), SCREEN_WIDTH // 4, 5)
+		
 		#draw and check buttons
 		# Check for button press/hold
 		hero.move_left = left_button.draw()
@@ -1430,16 +1439,20 @@ while run:
 		opponent_alive = online_client.is_opponent_alive()
 		opponent_score = online_client.get_opponent_score()
 		
+		# Check if time has run out (only using local timer)
+		time_remaining = online_client.get_time_remaining()
+		time_expired = time_remaining <= 0
+		
 		# Determine game outcome based on test cases provided
 		# - If one player is alive and other has fallen, alive player wins
 		# - If both have fallen, higher score wins
 		# - If both have fallen with equal scores, it's a draw
 		# - If both are alive, game continues
 		
-		# Check if the game should end (at least one player has fallen)
-		if not player_alive or not opponent_alive:
-			# Both players have fallen - compare scores
-			if not player_alive and not opponent_alive:
+		# Check if the game should end (at least one player has fallen or time expired)
+		if not player_alive or not opponent_alive or time_expired:
+			# Both players have fallen or time expired - compare scores
+			if (not player_alive and not opponent_alive) or time_expired:
 				# Compare scores to determine winner
 				if player_height > opponent_score:
 					online_win = True
